@@ -295,8 +295,7 @@ fn load_pdf_pages(path: &impl AsRef<Path>) -> Result<Vec<Page>> {
 
     let render_config = PdfRenderConfig::new()
         .set_target_width(500)
-        .set_maximum_height(500)
-        .rotate_if_landscape(PdfPageRenderRotation::Degrees90, true);
+        .set_maximum_height(500);
 
     let mut previews = Vec::new();
 
@@ -358,8 +357,8 @@ mod test {
         assert_eq!(3, source_file.pages.len());
 
         // Paysage pages are rotated 90°
-        assert_eq!(386, source_file.pages[0].width());
-        assert_eq!(500, source_file.pages[0].height());
+        assert_eq!(500, source_file.pages[0].width());
+        assert_eq!(386, source_file.pages[0].height());
     }
 
     #[test]

@@ -3,6 +3,7 @@
   import {invoke} from '@tauri-apps/api/core'
   import '@fortawesome/fontawesome-free/css/all.min.css'
   import {listen} from "@tauri-apps/api/event";
+  import Files from "./lib/Files.svelte";
 
   type Page = {
     preview_jpg: string
@@ -19,6 +20,7 @@
 
   let count: number = $state(0)
   let project: Project = $state({ source_files: [] })
+  let isDraggingFilesOver: boolean = $state(false)
 
   const loadProject = () => {
     invoke("load_project").then((response: any) => {
@@ -50,47 +52,94 @@
     loadProject()
   })
 
+  listen("tauri://drag-over", () => {
+    isDraggingFilesOver = true
+  })
+
+  listen("tauri://drag-leave", () => {
+    isDraggingFilesOver = false
+  })
+
   attachConsole()
 </script>
 
-<main>
-  <div id="files">
+<project>
+  {#if project.source_files.length === 0}
+    <dropzone class="{isDraggingFilesOver ? 'active' : ''}">
+      <i class="fa-regular fa-file-circle-plus"></i>
+    </dropzone>
+  {:else}
     {#each project.source_files as source_file}
-      <p>{baseName(source_file.path)}</p>
-      <div class="file">
-        {#each source_file.pages as page, i}
-          <div class="page">
-            <img src={previewToDataUrl(page.preview_jpg)} alt="Page preview for page number {i + 1}"/>
-          </div>
-        {/each}
-      </div>
+      <file>
+        <p>{baseName(source_file.path)}</p>
+        <previews>
+          {#each source_file.pages as page, i}
+            <page>
+              <img src={previewToDataUrl(page.preview_jpg)} alt="Page preview for page number {i + 1}"/>
+            </page>
+          {/each}
+        </previews>
+      </file>
     {/each}
-  </div>
-
-  <button onclick={openFiles}>
-    <i class="fa-regular fa-file-circle-plus"></i>
-  </button>
-</main>
+  {/if}
+</project>
 
 <style>
-    main {
-        flex-grow: 100;
-    }
-    .file {
+    dropzone {
         display: flex;
-        overflow-x: scroll;
-        height: 200px;
-    }
-    .page {
-        padding: 0 10px;
+        align-items: center;
+        justify-content: center;
         height: 100%;
-        width: 100%;
+        text-align: center;
+        padding: 20px;
+        border: 2px dashed var(--dropzone-grey);
+        border-radius: 10px;
 
-        img {
-            height: 100%;
-            max-width: 100%;
-            object-fit: contain;
+        i {
+            font-size: 50px;
+            color: var(--dropzone-grey);
         }
 
+        &.active {
+            border-color: var(--active-color);
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.2);
+
+            i {
+                color: var(--active-color);
+            }
+        }
+    }
+
+    file {
+        display: block;
+        margin-bottom: 2rem;
+
+        &:nth-child(odd) {
+            background-color: var(--file-background-color);
+        }
+    }
+
+    previews {
+        display: block;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+    }
+
+    page {
+        display: inline-block;
+
+        img {
+            height: var(--file-height);
+            max-width: 100%;
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+    }
+
+    page:not(:last-child) {
+        margin-right: var(--page-margin-right);
+    }
+    page:first-child {
+        padding-left: 1px;
     }
 </style>
