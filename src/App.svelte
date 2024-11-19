@@ -1,54 +1,96 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
   import {attachConsole} from "@tauri-apps/plugin-log";
+  import {invoke} from '@tauri-apps/api/core'
+  import '@fortawesome/fontawesome-free/css/all.min.css'
+  import {listen} from "@tauri-apps/api/event";
+
+  type Page = {
+    preview_jpg: string
+  }
+
+  type SourceFile = {
+    pages: Page[]
+    path: string,
+  }
+
+  type Project = {
+    source_files: SourceFile[]
+  }
+
+  let count: number = $state(0)
+  let project: Project = $state({ source_files: [] })
+
+  const loadProject = () => {
+    invoke("load_project").then((response: any) => {
+      project = response.project as Project;
+    });
+  }
+
+  $effect(() => {
+    loadProject()
+  })
+
+  const openFiles = () => {
+    count += 1
+    invoke("open_files").then((response: any) => {
+      project = response.project as Project;
+    });
+
+  }
+
+  const previewToDataUrl = (preview_jpg: string) => {
+    return "data:image/jpg;base64," + preview_jpg
+  }
+
+  const baseName = (path: string) => {
+    return path.split('/').pop()
+  }
+
+  listen("files-did-open", () => {
+    loadProject()
+  })
 
   attachConsole()
 </script>
 
 <main>
-  <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo"/>
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo"/>
-    </a>
+  <div id="files">
+    {#each project.source_files as source_file}
+      <p>{baseName(source_file.path)}</p>
+      <div class="file">
+        {#each source_file.pages as page, i}
+          <div class="page">
+            <img src={previewToDataUrl(page.preview_jpg)} alt="Page preview for page number {i + 1}"/>
+          </div>
+        {/each}
+      </div>
+    {/each}
   </div>
-  <h1>Vite + Svelte</h1>
 
-  <div class="card">
-    <Counter/>
-  </div>
-
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the
-    official Svelte app framework powered by Vite!
-  </p>
-
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
+  <button onclick={openFiles}>
+    <i class="fa-regular fa-file-circle-plus"></i>
+  </button>
 </main>
 
 <style>
-    .logo {
-        height: 6em;
-        padding: 1.5em;
-        will-change: filter;
-        transition: filter 300ms;
+    main {
+        flex-grow: 100;
     }
-
-    .logo:hover {
-        filter: drop-shadow(0 0 2em #646cffaa);
+    .file {
+        display: flex;
+        overflow-x: scroll;
+        height: 200px;
     }
+    .page {
+        padding: 0 10px;
+        height: 100%;
+        width: 100%;
 
-    .logo.svelte:hover {
-        filter: drop-shadow(0 0 2em #ff3e00aa);
-    }
+        img {
+            height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+        }
 
-    .read-the-docs {
-        color: #888;
     }
 </style>

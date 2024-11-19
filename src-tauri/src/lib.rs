@@ -1,31 +1,31 @@
 mod project;
 use crate::project::Project;
 use log::info;
-use serde::Serialize;
 use project::SourceFile;
+use serde::Serialize;
 use std::sync::Mutex;
+use tauri::Emitter;
 use tauri::Manager;
 use tauri_api::dialog;
 use tauri_api::dialog::Response;
 
 #[derive(Debug, Clone, Serialize)]
 struct AppState {
-    document: Project
+    project: Project
 }
 
 impl AppState {
     fn new() -> Self {
         Self {
-            document: Project::new()
+            project: Project::new()
         }
     }
 
     fn add_source_files(&mut self, new_files: Vec<SourceFile>) {
-        self.document.add_source_files(new_files);
+        self.project.add_source_files(new_files);
     }
 }
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn open_files(app_state: tauri::State<'_, Mutex<AppState>>) -> Result<AppState, String> {
     let response = dialog::select_multiple(Some("pdf"), None::<String>);
@@ -40,23 +40,38 @@ fn open_files(app_state: tauri::State<'_, Mutex<AppState>>) -> Result<AppState, 
 
     let new_files = new_paths.iter().map(|path| SourceFile::open(path)).collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
 
-    let mut app_state = app_state.lock().map_err(|_| "Couldn't lock the applicatoin state")?;
+    let mut app_state = app_state.lock().map_err(|_| "Couldn't lock the application state")?;
 
     app_state.add_source_files(new_files);
 
     Ok(app_state.clone())
 }
 
+#[tauri::command]
+fn load_project(app_state: tauri::State<'_, Mutex<AppState>>) -> Result<AppState, String> {
+    Ok(app_state.lock().map_err(|_| "Couldn't lock the application state")?.clone())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .on_window_event(|window, event| match event {
+        .on_window_event(move |window, event| match event {
             tauri::WindowEvent::DragDrop(drag_drop) => {
-                if let tauri::DragDropEvent::Drop { paths: _, position: _ } = drag_drop {
-                    let _app_state = window.state::<Mutex<AppState>>();
+                if let tauri::DragDropEvent::Drop { paths, position: _ } = drag_drop {
+                    let _ = window.emit("files-will-open", ());
+                    let app_state = window.state::<Mutex<AppState>>();
 
-                    // let new_files = paths.iter().map(|path| SourceFile::open(path)).collect::<Result<Vec<_>, _>()?;
-                    // new_files
+                    let new_files =
+                        if let Ok(new_files) = paths.iter().map(|path| SourceFile::open(path)).collect::<Result<Vec<_>, _>>() {
+                            new_files
+                        } else {
+                            vec![]
+                        };
+
+                    let mut app_state = app_state.lock().expect("Couldn't lock the application state");
+                    app_state.add_source_files(new_files);
+
+                    let _ = window.emit("files-did-open", ());
                 }
             }
             _ => {}
@@ -72,7 +87,7 @@ pub fn run() {
             ])
             .build())
         .manage(Mutex::new(AppState::new()))
-        .invoke_handler(tauri::generate_handler![open_files])
+        .invoke_handler(tauri::generate_handler![open_files, load_project])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

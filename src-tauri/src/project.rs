@@ -204,6 +204,7 @@ impl Project {
             }
         }
 
+        document.prune_objects();
         document.compress();
 
         // Save the merged PDF.
@@ -367,15 +368,30 @@ mod test {
             source_files: vec![
                 SourceFile::open("test/basic.pdf").unwrap(),
                 SourceFile::open("test/legal.pdf").unwrap(),
+                SourceFile::open("test/paysage.pdf").unwrap(),
             ],
         };
         let selectors = vec![
             Selector::new(0, 0),
-            Selector::new(1, 0),
+            Selector::new(1, 1),
+            Selector::new(2, 2),
         ];
 
         let document = project.export(selectors).unwrap();
 
-        assert_eq!(2, document.page_iter().count());
+        assert_eq!(3, document.page_iter().count());
+
+        let count_streams = document.objects.iter().filter(|(id, object)| {
+            if let Object::Stream(s) = object {
+                let contents = s.decompressed_content().unwrap();
+                // The streams would contain (1), (2), or (3)
+                contents.windows(3).find(|w| w == &[40, 49, 41] || w == &[40, 50, 41] || w == &[40, 51, 41]).is_some()
+            } else {
+                false
+            }
+        }).count();
+
+        // Make sure hidden objects have been pruned
+        assert_eq!(3, count_streams);
     }
 }
