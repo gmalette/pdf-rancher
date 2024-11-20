@@ -1,9 +1,9 @@
 <script lang="ts">
-  import {attachConsole} from "@tauri-apps/plugin-log";
+  import {attachConsole, info} from "@tauri-apps/plugin-log";
   import {invoke} from '@tauri-apps/api/core'
   import '@fortawesome/fontawesome-free/css/all.min.css'
   import {listen} from "@tauri-apps/api/event";
-  import Files from "./lib/Files.svelte";
+  import { dndzone } from 'svelte-dnd-action';
 
   type Page = {
     preview_jpg: string
@@ -14,17 +14,49 @@
     path: string,
   }
 
-  type Project = {
-    source_files: SourceFile[]
+  type Ordering = {
+    id: number,
+    source_file_index: number,
+    page_index: number,
   }
 
-  let count: number = $state(0)
-  let project: Project = $state({ source_files: [] })
+  type ProjectResponse = {
+    source_files: SourceFile[],
+  }
+
+  type Project = {
+    source_files: SourceFile[],
+    ordering: Ordering[],
+  }
+
+  let project: Project = $state({ source_files: [], ordering: [] })
   let isDraggingFilesOver: boolean = $state(false)
+
+  const updateProject = (newProject: ProjectResponse) => {
+    let newOrdering = []
+    let index = 0;
+    for (let i = 0; i < newProject.source_files.length; i++) {
+      let source_file = newProject.source_files[i];
+      for (let j = 0; j < source_file.pages.length; j++) {
+        let oldOrdering = project.ordering[index];
+        if (oldOrdering) {
+          newOrdering.push(oldOrdering)
+        } else {
+          newOrdering.push({id: index, source_file_index: i, page_index: j})
+        }
+        index += 1
+      }
+    }
+
+    project = {
+      source_files: newProject.source_files,
+      ordering: newOrdering,
+    }
+  }
 
   const loadProject = () => {
     invoke("load_project").then((response: any) => {
-      project = response.project as Project;
+      updateProject(response.project as ProjectResponse);
     });
   }
 
@@ -33,11 +65,9 @@
   })
 
   const openFiles = () => {
-    count += 1
     invoke("open_files").then((response: any) => {
-      project = response.project as Project;
-    });
-
+      updateProject(response.project as ProjectResponse);
+    })
   }
 
   const previewToDataUrl = (preview_jpg: string) => {
@@ -60,7 +90,22 @@
     isDraggingFilesOver = false
   })
 
-  attachConsole()
+  listen("tauri://drag-drop", () => {
+    isDraggingFilesOver = false
+  })
+
+  function handleDnd(e: any) {
+    project = {
+      ...project,
+      ordering: e.detail.items,
+    }
+  }
+
+  function page(ordering: Ordering) {
+    return project.source_files[ordering.source_file_index].pages[ordering.page_index]
+  }
+
+  attachConsole();
 </script>
 
 <project>
@@ -69,18 +114,14 @@
       <i class="fa-regular fa-file-circle-plus"></i>
     </dropzone>
   {:else}
-    {#each project.source_files as source_file}
-      <file>
-        <p>{baseName(source_file.path)}</p>
-        <previews>
-          {#each source_file.pages as page, i}
-            <page>
-              <img src={previewToDataUrl(page.preview_jpg)} alt="Page preview for page number {i + 1}"/>
-            </page>
-          {/each}
-        </previews>
-      </file>
-    {/each}
+    <previews use:dndzone={{items: project.ordering, flipDurationMs: 100}} onconsider={handleDnd} onfinalize={handleDnd}>
+      {#each project.ordering as ordering, pageNum (ordering.id)}
+        <page>
+          <img src={previewToDataUrl(page(ordering).preview_jpg)} alt="Page preview for page number {pageNum + 1}"/>
+          <p>{pageNum + 1}</p>
+        </page>
+      {/each}
+    </previews>
   {/if}
 </project>
 
@@ -121,13 +162,20 @@
 
     previews {
         display: block;
-        overflow-x: auto;
-        overflow-y: hidden;
-        white-space: nowrap;
+        /*overflow-x: auto;*/
+        /*overflow-y: hidden;*/
+        /*white-space: nowrap;*/
     }
 
     page {
         display: inline-block;
+        text-align: center;
+        padding-bottom: 1rem;
+
+        p {
+            padding: 0;
+            margin: 0;
+        }
 
         img {
             height: var(--file-height);
