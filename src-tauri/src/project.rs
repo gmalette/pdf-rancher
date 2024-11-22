@@ -27,7 +27,7 @@ impl Project {
         self.source_files.extend(new_files);
     }
 
-    pub fn export(&self, selectors: Vec<Selector>) -> Result<Document> {
+    pub fn export(&self, selectors: &Vec<Selector>) -> Result<Document> {
         // Load documents
         let documents = self.source_files.iter().map(|source_file| {
             Ok((source_file.id.clone(), Document::load(&source_file.path)?))
@@ -135,7 +135,7 @@ impl Project {
         // Iterate over all "Page" objects and collect into the parent "Pages" created before
         let mut selected_pages = Vec::new();
         for selector in selectors.iter() {
-            let Selector { source_file_id, page_index } = selector;
+            let Selector { source_file_index: source_file_id, page_index } = selector;
             let (object_id, object) = &source_pages[*source_file_id][*page_index];
             if let Ok(dictionary) = object.as_dict() {
                 let mut dictionary = dictionary.clone();
@@ -219,14 +219,14 @@ impl Project {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Selector {
-    source_file_id: usize,
+    source_file_index: usize,
     page_index: usize,
 }
 
 impl Selector {
-    fn new(source_file_id: usize, page_index: usize) -> Self {
+    fn new(source_file_index: usize, page_index: usize) -> Self {
         Self {
-            source_file_id,
+            source_file_index,
             page_index,
         }
     }
@@ -376,7 +376,7 @@ mod test {
             Selector::new(2, 2),
         ];
 
-        let document = project.export(selectors).unwrap();
+        let document = project.export(&selectors).unwrap();
 
         assert_eq!(3, document.page_iter().count());
 

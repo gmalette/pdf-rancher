@@ -18,6 +18,7 @@
     id: number,
     source_file_index: number,
     page_index: number,
+    enabled: boolean,
   }
 
   type ProjectResponse = {
@@ -42,7 +43,7 @@
         if (oldOrdering) {
           newOrdering.push(oldOrdering)
         } else {
-          newOrdering.push({id: index, source_file_index: i, page_index: j})
+          newOrdering.push({ id: index, source_file_index: i, page_index: j, enabled: true })
         }
         index += 1
       }
@@ -54,8 +55,8 @@
     }
   }
 
-  const loadProject = () => {
-    invoke("load_project").then((response: any) => {
+  function loadProject() {
+    invoke("load_project_command").then((response: any) => {
       updateProject(response.project as ProjectResponse);
     });
   }
@@ -64,17 +65,17 @@
     loadProject()
   })
 
-  const openFiles = () => {
-    invoke("open_files").then((response: any) => {
+  function openFiles() {
+    invoke("open_files_command").then((response: any) => {
       updateProject(response.project as ProjectResponse);
     })
   }
 
-  const previewToDataUrl = (preview_jpg: string) => {
+  function previewToDataUrl(preview_jpg: string) {
     return "data:image/jpg;base64," + preview_jpg
   }
 
-  const baseName = (path: string) => {
+  function baseName(path: string) {
     return path.split('/').pop()
   }
 
@@ -82,11 +83,20 @@
     loadProject()
   })
 
+  listen("export-requested", () => {
+    // select only enabled pages
+    const ordering = project.ordering.filter((ordering) => ordering.enabled)
+    info(JSON.stringify(ordering))
+    invoke("export_command", { ordering })
+  })
+
   listen("tauri://drag-over", () => {
+    info("drag-over")
     isDraggingFilesOver = true
   })
 
   listen("tauri://drag-leave", () => {
+    info("drag-leave")
     isDraggingFilesOver = false
   })
 
@@ -105,18 +115,41 @@
     return project.source_files[ordering.source_file_index].pages[ordering.page_index]
   }
 
+  function onContextMenu(e: MouseEvent, targetIndex: number) {
+    e.preventDefault()
+
+    const oldOrdering = project.ordering[targetIndex]
+
+    const newOrdering = {
+      ...oldOrdering,
+      enabled: !oldOrdering.enabled,
+    }
+
+    const ordering = [
+      ...project.ordering.slice(0, targetIndex),
+      newOrdering,
+      ...project.ordering.slice(targetIndex + 1),
+    ]
+
+    // Disable the ordering
+    project = {
+      ...project,
+      ordering,
+    }
+  }
+
   attachConsole();
 </script>
 
 <project>
   {#if project.source_files.length === 0}
-    <dropzone class="{isDraggingFilesOver ? 'active' : ''}">
+    <dropzone class:active={isDraggingFilesOver}>
       <i class="fa-regular fa-file-circle-plus"></i>
     </dropzone>
   {:else}
     <previews use:dndzone={{items: project.ordering, flipDurationMs: 100}} onconsider={handleDnd} onfinalize={handleDnd}>
       {#each project.ordering as ordering, pageNum (ordering.id)}
-        <page>
+        <page oncontextmenu={(e) => onContextMenu(e, pageNum)} class:disabled={!ordering.enabled}>
           <img src={previewToDataUrl(page(ordering).preview_jpg)} alt="Page preview for page number {pageNum + 1}"/>
           <p>{pageNum + 1}</p>
         </page>
@@ -171,6 +204,10 @@
         display: inline-block;
         text-align: center;
         padding-bottom: 1rem;
+
+        &.disabled {
+            opacity: 0.1;
+        }
 
         p {
             padding: 0;
