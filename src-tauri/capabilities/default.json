@@ -11,6 +11,6 @@
     "log:default",
     "dialog:default",
     "dialog:default",
-    "notification:default"
+    "fs:default"
   ]
 }

@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use image::EncodableLayout;
 use lopdf::{Bookmark, Document, Object, ObjectId};
 use pdfium_render::prelude::*;
@@ -6,6 +6,8 @@ use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::env::consts::{ARCH, OS};
+use std::ffi::OsString;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Cursor, Read};
@@ -291,10 +293,26 @@ impl SourceFile {
     }
 }
 
+fn pdfium() -> Result<Pdfium> {
+    for path in ["./", "./frameworks/"].iter() {
+        let mut prefix = OsString::new();
+        prefix.push(path);
+        prefix.push(ARCH);
+        prefix.push("-");
+        prefix.push(OS);
+
+        let name = Pdfium::pdfium_platform_library_name_at_path(&prefix);
+
+        if let Ok(lib) = Pdfium::bind_to_library(name) {
+            return Ok(Pdfium::new(lib));
+        }
+    }
+
+    Err(anyhow!("Failed to load Pdfium library"))
+}
+
 fn load_pdf_pages(path: &PathBuf) -> Result<Vec<Page>> {
-    let pdfium = Pdfium::new(
-        Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./"))?
-    );
+    let pdfium = pdfium()?;
 
     let mut file = File::open(path)?;
     let mut str = Vec::new();
@@ -342,7 +360,7 @@ mod test {
     fn test_open() {
         let path = PathBuf::from("test/basic.pdf");
         let source_file = SourceFile::open(&path).unwrap();
-        // assert_eq!(path, source_file.path);
+        assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
         assert_eq!(386, source_file.pages[0].width());
         assert_eq!(500, source_file.pages[0].height());
@@ -352,7 +370,7 @@ mod test {
     fn test_open_legal() {
         let path = PathBuf::from("test/legal.pdf");
         let source_file = SourceFile::open(&path).unwrap();
-        // assert_eq!(path, source_file.path);
+        assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
         assert_eq!(304, source_file.pages[0].width());
         assert_eq!(500, source_file.pages[0].height());
@@ -362,12 +380,20 @@ mod test {
     fn test_open_paysage() {
         let path = PathBuf::from("test/paysage.pdf");
         let source_file = SourceFile::open(&path).unwrap();
-        // assert_eq!(path, source_file.path);
+        assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
 
         // Paysage pages are rotated 90°
         assert_eq!(500, source_file.pages[0].width());
         assert_eq!(386, source_file.pages[0].height());
+    }
+
+    #[test]
+    fn test_open_returns_errors() {
+        let path = PathBuf::from("test/potato.pdf");
+        let source_file = SourceFile::open(&path);
+        assert!(source_file.is_err());
+        assert_eq!("No such file or directory (os error 2)", source_file.unwrap_err().to_string());
     }
 
     #[test]
@@ -383,6 +409,42 @@ mod test {
             Selector::new(0, 0),
             Selector::new(1, 1),
             Selector::new(2, 2),
+        ];
+
+        let document = project.export(&selectors).unwrap();
+
+        assert_eq!(3, document.page_iter().count());
+
+        let count_streams = document
+            .objects
+            .iter()
+            .filter(|(id, object)| {
+                if let Object::Stream(s) = object {
+                    let contents = s.decompressed_content().unwrap();
+                    // The streams would contain (1), (2), or (3)
+                    contents
+                        .windows(3)
+                        .find(|w| w == &[40, 49, 41] || w == &[40, 50, 41] || w == &[40, 51, 41])
+                        .is_some()
+                } else {
+                    false
+                }
+            })
+            .count();
+
+        // Make sure hidden objects have been pruned
+        assert_eq!(3, count_streams);
+    }
+
+    #[test]
+    fn export_returns_errors() {
+        let project = Project {
+            source_files: vec![
+                SourceFile::open(&PathBuf::from("test/")).unwrap(),
+            ],
+        };
+        let selectors = vec![
+            Selector::new(0, 0),
         ];
 
         let document = project.export(&selectors).unwrap();
