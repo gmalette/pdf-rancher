@@ -1,26 +1,24 @@
 mod project;
 use crate::project::{Project, Selector};
-use log::info;
 use project::SourceFile;
 use serde::Serialize;
 use std::sync::Mutex;
-use tauri::Emitter;
-use tauri::Manager;
-use tauri::menu::{Menu, MenuBuilder, SubmenuBuilder};
-use tauri_api::dialog;
-use tauri_api::dialog::Response;
 use tauri::menu::*;
-use tauri_api::path::app_dir;
+use tauri::menu::{MenuBuilder, SubmenuBuilder};
+use tauri::Manager;
+use tauri::{AppHandle, Emitter};
+use tauri_plugin_dialog::{DialogExt, FilePath};
+use tauri_plugin_notification::NotificationExt;
 
 #[derive(Debug, Clone, Serialize)]
 struct AppState {
-    project: Project
+    project: Project,
 }
 
 impl AppState {
     fn new() -> Self {
         Self {
-            project: Project::new()
+            project: Project::new(),
         }
     }
 
@@ -29,48 +27,103 @@ impl AppState {
     }
 }
 
-fn open_files(app_state: &mut AppState) -> Result<AppState, String> {
-    let response = dialog::select_multiple(Some("pdf"), None::<String>);
+fn open_files(app_handle: AppHandle) -> Result<(), String> {
+    use tauri_plugin_dialog::DialogExt;
 
-    let new_paths = match response {
-        Ok(Response::Okay(file)) => { vec![file] }
-        Ok(Response::OkayMultiple(files)) => { files }
-        _ => { vec![] }
-    };
+    app_handle
+        .dialog()
+        .file()
+        .add_filter("PDFs", &["pdf"])
+        .pick_files(move |picked_paths| {
+            let picked_paths = picked_paths.map(|paths| {
+                paths
+                    .into_iter()
+                    .filter_map(|f| match f {
+                        FilePath::Url(_) => None,
+                        FilePath::Path(p) => Some(p),
+                    })
+                    .collect::<Vec<_>>()
+            });
 
-    info!("Opening files: {:?}", new_paths);
+            let new_paths = if let Some(new_paths) = picked_paths {
+                new_paths
+            } else {
+                return;
+            };
 
-    let new_files = new_paths.iter().map(|path| SourceFile::open(path)).collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+            let new_files = new_paths
+                .iter()
+                .map(|path| SourceFile::open(path))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| e.to_string());
 
-    app_state.add_source_files(new_files);
+            let app_state = app_handle.state::<Mutex<AppState>>();
+            let app_state = app_state
+                .lock()
+                .map_err(|_| "Couldn't lock the application state");
 
-    Ok(app_state.clone())
+            if let (Ok(new_files), Ok(mut app_state)) = (new_files, app_state) {
+                app_state.add_source_files(new_files);
+
+                let _ = app_handle.emit("files-did-open", ());
+            };
+        });
+
+    Ok(())
 }
 
 #[tauri::command]
-fn open_files_command(app_state: tauri::State<'_, Mutex<AppState>>) -> Result<AppState, String> {
-    let mut app_state = app_state.lock().map_err(|_| "Couldn't lock the application state")?;
-    open_files(&mut app_state)
+fn open_files_command(app_handle: AppHandle) -> Result<(), String> {
+    open_files(app_handle)
 }
 
 #[tauri::command]
 fn load_project_command(app_state: tauri::State<'_, Mutex<AppState>>) -> Result<AppState, String> {
-    Ok(app_state.lock().map_err(|_| "Couldn't lock the application state")?.clone())
+    Ok(app_state
+        .lock()
+        .map_err(|_| "Couldn't lock the application state")?
+        .clone())
+}
+
+fn notify_error(app_handle: &AppHandle, message: &str) {
+    use tauri_plugin_notification::NotificationExt;
+    app_handle.notification()
+        .builder()
+        .title("PDF Rancher: Error")
+        .body(message)
+        .show()
+        .unwrap();
 }
 
 #[tauri::command]
-fn export_command(app_state: tauri::State<'_, Mutex<AppState>>, ordering: Vec<Selector>) -> Result<(), String> {
-    dbg!(&ordering);
-    let response = dialog::save_file(Some("pdf"), None::<String>);
+fn export_command(app_handle: AppHandle, ordering: Vec<Selector>) -> Result<(), String> {
+    let _ = app_handle.emit("rancher://will-export", ());
 
-    let path = match response {
-        Ok(Response::Okay(file)) => { file }
-        _ => { return Ok(()); }
-    };
+    app_handle
+        .dialog()
+        .file()
+        .set_file_name("project.pdf")
+        .save_file(move |path| {
+            let path = match path {
+                Some(FilePath::Path(p)) => p,
+                _ => return,
+            };
 
-    let project = &app_state.lock().map_err(|_| "Couldn't lock the application state")?.project;
-    let mut document = project.export(&ordering).map_err(|e| e.to_string())?;
-    document.save(&path).map_err(|e| e.to_string())?;
+            let state = app_handle.state::<Mutex<AppState>>();
+            let Ok(unlocked_state) = state.lock() else {
+                return notify_error(&app_handle, "An error occurred while exporting the file");
+            };
+
+            let Ok(mut document) = unlocked_state
+                .project
+                .export(&ordering) else {
+                return notify_error(&app_handle, "An error occurred while exporting the file");
+            };
+
+            let Ok(_) = document.save(path) else {
+                return notify_error(&app_handle, "An error occurred while saving the file");
+            };
+        });
 
     Ok(())
 }
@@ -78,23 +131,30 @@ fn export_command(app_state: tauri::State<'_, Mutex<AppState>>, ordering: Vec<Se
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::DragDrop(drag_drop) => {
                 if let tauri::DragDropEvent::Drop { paths, position: _ } = drag_drop {
-                    let _ = window.emit("files-will-open", ());
+                    let _ = window.emit("rancher:will-open-files", ());
                     let app_state = window.state::<Mutex<AppState>>();
 
-                    let new_files =
-                        if let Ok(new_files) = paths.iter().map(|path| SourceFile::open(path)).collect::<Result<Vec<_>, _>>() {
-                            new_files
-                        } else {
-                            vec![]
-                        };
+                    let new_files = if let Ok(new_files) = paths
+                        .iter()
+                        .map(|path| SourceFile::open(path))
+                        .collect::<Result<Vec<_>, _>>()
+                    {
+                        new_files
+                    } else {
+                        vec![]
+                    };
 
-                    let mut app_state = app_state.lock().expect("Couldn't lock the application state");
+                    let mut app_state = app_state
+                        .lock()
+                        .expect("Couldn't lock the application state");
                     app_state.add_source_files(new_files);
 
-                    let _ = window.emit("files-did-open", ());
+                    let _ = window.emit("rancher://did-open-files", ());
                 }
             }
             _ => {}
@@ -103,9 +163,7 @@ pub fn run() {
             let id = event.id();
 
             if id == "open-file" {
-                let mut app_state = app.state::<Mutex<AppState>>().inner();
-                let app_state = &mut app_state.lock().expect("Couldn't lock the application state");
-                open_files(app_state);
+                let _ = open_files(app.clone());
                 return;
             }
 
@@ -133,22 +191,20 @@ pub fn run() {
 
             Ok(menu)
         })
-        .setup(|app| {
-            Ok(())
-        })
-        .plugin(tauri_plugin_log::Builder::new()
-            .targets([
-                tauri_plugin_log::Target::new(
-                    tauri_plugin_log::TargetKind::Stdout,
-                ),
-                tauri_plugin_log::Target::new(
-                    tauri_plugin_log::TargetKind::Webview,
-                )
-            ])
-            .build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ])
+                .build(),
+        )
         .manage(Mutex::new(AppState::new()))
-        .invoke_handler(tauri::generate_handler![open_files_command, load_project_command, export_command])
+        .invoke_handler(tauri::generate_handler![
+            open_files_command,
+            load_project_command,
+            export_command
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

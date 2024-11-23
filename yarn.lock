@@ -349,6 +349,13 @@
   dependencies:
     "@tauri-apps/api" "^2.0.0"
 
+"@tauri-apps/plugin-notification@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-notification/-/plugin-notification-2.0.0.tgz#7f5e75a87e4c11d28aede278063c670befd900e3"
+  integrity sha512-6qEDYJS7mgXZWLXA0EFL+DVCJh8sJlzSoyw6B50pxhLPVFjc5Vr5DVzl5W3mUHaYhod5wsC984eQnlCCGqxYDA==
+  dependencies:
+    "@tauri-apps/api" "^2.0.0"
+
 "@tsconfig/svelte@^5.0.4":
   version "5.0.4"
   resolved "https://registry.npmjs.org/@tsconfig/svelte/-/svelte-5.0.4.tgz"

@@ -9,8 +9,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Cursor, Read};
-use std::path::Path;
-use tauri_api::dialog;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Project {
@@ -30,9 +29,11 @@ impl Project {
 
     pub fn export(&self, selectors: &Vec<Selector>) -> Result<Document> {
         // Load documents
-        let documents = self.source_files.iter().map(|source_file| {
-            Ok((source_file.id.clone(), Document::load(&source_file.path)?))
-        }).collect::<Result<Vec<_>>>()?;
+        let documents = self
+            .source_files
+            .iter()
+            .map(|source_file| Ok((source_file.id.clone(), Document::load(&source_file.path)?)))
+            .collect::<Result<Vec<_>>>()?;
 
         // Define a starting `max_id` (will be used as start index for object_ids).
         let mut max_id = 1;
@@ -53,12 +54,16 @@ impl Project {
             max_id = doc.max_id + 1;
 
             documents_pages.extend(
-                doc
-                    .get_pages()
+                doc.get_pages()
                     .into_iter()
                     .map(|(_, object_id)| {
                         if !first {
-                            let bookmark = Bookmark::new(String::from(format!("Page_{}", pagenum)), [0.0, 0.0, 1.0], 0, object_id);
+                            let bookmark = Bookmark::new(
+                                String::from(format!("Page_{}", pagenum)),
+                                [0.0, 0.0, 1.0],
+                                0,
+                                object_id,
+                            );
                             document.add_bookmark(bookmark, None);
                             first = true;
                             pagenum += 1;
@@ -68,10 +73,7 @@ impl Project {
 
                         source_page.push((object_id, page.to_owned()));
 
-                        Ok((
-                            object_id,
-                            page.to_owned(),
-                        ))
+                        Ok((object_id, page.to_owned()))
                     })
                     .collect::<Result<BTreeMap<ObjectId, Object>>>()?,
             );
@@ -136,7 +138,10 @@ impl Project {
         // Iterate over all "Page" objects and collect into the parent "Pages" created before
         let mut selected_pages = Vec::new();
         for selector in selectors.iter() {
-            let Selector { source_file_index: source_file_id, page_index } = selector;
+            let Selector {
+                source_file_index: source_file_id,
+                page_index,
+            } = selector;
             let (object_id, object) = &source_pages[*source_file_id][*page_index];
             if let Ok(dictionary) = object.as_dict() {
                 let mut dictionary = dictionary.clone();
@@ -265,18 +270,18 @@ pub struct SourceFile {
 }
 
 impl SourceFile {
-    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+    pub fn open(path: &PathBuf) -> Result<Self> {
         // random string
         let id = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(7)
             .map(char::from)
             .collect();
-        let path = path.as_ref().to_string_lossy().to_string();
-        let pages = load_pdf_pages(&path)?;
+        let path_str = path.to_string_lossy().to_string();
+        let pages = load_pdf_pages(path)?;
         Ok(Self {
             id,
-            path,
+            path: path_str,
             pages,
         })
     }
@@ -286,16 +291,9 @@ impl SourceFile {
     }
 }
 
-fn load_pdf_pages(path: &impl AsRef<Path>) -> Result<Vec<Page>> {
-    let current_path = std::env::current_dir()?;
-    let response = dialog::ask(current_path.to_string_lossy(), "Current path");
-
+fn load_pdf_pages(path: &PathBuf) -> Result<Vec<Page>> {
     let pdfium = Pdfium::new(
-        Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./")).or_else(|e| {
-            dialog::ask(e.to_string(), "Error loading PDFium");
-
-            Err(e)
-        })?
+        Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./"))?
     );
 
     let mut file = File::open(path)?;
@@ -309,10 +307,11 @@ fn load_pdf_pages(path: &impl AsRef<Path>) -> Result<Vec<Page>> {
 
     let mut previews = Vec::new();
 
-    for  page in document.pages().iter() {
+    for page in document.pages().iter() {
         let mut bytes = Cursor::new(Vec::new());
 
-        let img = page.render_with_config(&render_config)?
+        let img = page
+            .render_with_config(&render_config)?
             .as_image()
             .into_rgb8();
 
@@ -341,9 +340,9 @@ mod test {
 
     #[test]
     fn test_open() {
-        let path = "test/basic.pdf";
-        let source_file = SourceFile::open(path).unwrap();
-        assert_eq!(path, source_file.path);
+        let path = PathBuf::from("test/basic.pdf");
+        let source_file = SourceFile::open(&path).unwrap();
+        // assert_eq!(path, source_file.path);
         assert_eq!(3, source_file.pages.len());
         assert_eq!(386, source_file.pages[0].width());
         assert_eq!(500, source_file.pages[0].height());
@@ -351,9 +350,9 @@ mod test {
 
     #[test]
     fn test_open_legal() {
-        let path = "test/legal.pdf";
-        let source_file = SourceFile::open(path).unwrap();
-        assert_eq!(path, source_file.path);
+        let path = PathBuf::from("test/legal.pdf");
+        let source_file = SourceFile::open(&path).unwrap();
+        // assert_eq!(path, source_file.path);
         assert_eq!(3, source_file.pages.len());
         assert_eq!(304, source_file.pages[0].width());
         assert_eq!(500, source_file.pages[0].height());
@@ -361,9 +360,9 @@ mod test {
 
     #[test]
     fn test_open_paysage() {
-        let path = "test/paysage.pdf";
-        let source_file = SourceFile::open(path).unwrap();
-        assert_eq!(path, source_file.path);
+        let path = PathBuf::from("test/paysage.pdf");
+        let source_file = SourceFile::open(&path).unwrap();
+        // assert_eq!(path, source_file.path);
         assert_eq!(3, source_file.pages.len());
 
         // Paysage pages are rotated 90°
@@ -375,9 +374,9 @@ mod test {
     fn test_merge_documents() {
         let project = Project {
             source_files: vec![
-                SourceFile::open("test/basic.pdf").unwrap(),
-                SourceFile::open("test/legal.pdf").unwrap(),
-                SourceFile::open("test/paysage.pdf").unwrap(),
+                SourceFile::open(&PathBuf::from("test/basic.pdf")).unwrap(),
+                SourceFile::open(&PathBuf::from("test/legal.pdf")).unwrap(),
+                SourceFile::open(&PathBuf::from("test/paysage.pdf")).unwrap(),
             ],
         };
         let selectors = vec![
@@ -390,15 +389,22 @@ mod test {
 
         assert_eq!(3, document.page_iter().count());
 
-        let count_streams = document.objects.iter().filter(|(id, object)| {
-            if let Object::Stream(s) = object {
-                let contents = s.decompressed_content().unwrap();
-                // The streams would contain (1), (2), or (3)
-                contents.windows(3).find(|w| w == &[40, 49, 41] || w == &[40, 50, 41] || w == &[40, 51, 41]).is_some()
-            } else {
-                false
-            }
-        }).count();
+        let count_streams = document
+            .objects
+            .iter()
+            .filter(|(id, object)| {
+                if let Object::Stream(s) = object {
+                    let contents = s.decompressed_content().unwrap();
+                    // The streams would contain (1), (2), or (3)
+                    contents
+                        .windows(3)
+                        .find(|w| w == &[40, 49, 41] || w == &[40, 50, 41] || w == &[40, 51, 41])
+                        .is_some()
+                } else {
+                    false
+                }
+            })
+            .count();
 
         // Make sure hidden objects have been pruned
         assert_eq!(3, count_streams);

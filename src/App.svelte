@@ -79,7 +79,7 @@
     return path.split('/').pop()
   }
 
-  listen("files-did-open", () => {
+  listen("rancher://did-open-files", () => {
     loadProject()
   })
 

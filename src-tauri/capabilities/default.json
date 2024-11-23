@@ -8,6 +8,9 @@
   "permissions": [
     "core:default",
     "log:allow-log",
-    "log:default"
+    "log:default",
+    "dialog:default",
+    "dialog:default",
+    "notification:default"
   ]
 }
