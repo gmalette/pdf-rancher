@@ -10,6 +10,7 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Cursor, Read};
 use std::path::Path;
+use tauri_api::dialog;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Project {
@@ -286,7 +287,16 @@ impl SourceFile {
 }
 
 fn load_pdf_pages(path: &impl AsRef<Path>) -> Result<Vec<Page>> {
-    let pdfium = Pdfium::default();
+    let current_path = std::env::current_dir()?;
+    let response = dialog::ask(current_path.to_string_lossy(), "Current path");
+
+    let pdfium = Pdfium::new(
+        Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./")).or_else(|e| {
+            dialog::ask(e.to_string(), "Error loading PDFium");
+
+            Err(e)
+        })?
+    );
 
     let mut file = File::open(path)?;
     let mut str = Vec::new();
