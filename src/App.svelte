@@ -1,7 +1,6 @@
 <script lang="ts">
   import {attachConsole, info} from "@tauri-apps/plugin-log";
   import {invoke} from '@tauri-apps/api/core'
-  import '@fortawesome/fontawesome-free/css/all.min.css'
   import {listen} from "@tauri-apps/api/event";
   import { dndzone } from 'svelte-dnd-action';
 

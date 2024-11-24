@@ -393,7 +393,10 @@ mod test {
         let path = PathBuf::from("test/potato.pdf");
         let source_file = SourceFile::open(&path);
         assert!(source_file.is_err());
-        assert_eq!("No such file or directory (os error 2)", source_file.unwrap_err().to_string());
+        assert_eq!(
+            "No such file or directory (os error 2)",
+            source_file.unwrap_err().to_string()
+        );
     }
 
     #[test]
@@ -439,13 +442,9 @@ mod test {
     #[test]
     fn export_returns_errors() {
         let project = Project {
-            source_files: vec![
-                SourceFile::open(&PathBuf::from("test/")).unwrap(),
-            ],
+            source_files: vec![SourceFile::open(&PathBuf::from("test/")).unwrap()],
         };
-        let selectors = vec![
-            Selector::new(0, 0),
-        ];
+        let selectors = vec![Selector::new(0, 0)];
 
         let document = project.export(&selectors).unwrap();
 

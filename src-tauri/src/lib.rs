@@ -1,11 +1,11 @@
 mod project;
 
-use std::path::PathBuf;
 use crate::project::{Project, Selector};
+use log::error;
 use project::SourceFile;
 use serde::Serialize;
+use std::path::PathBuf;
 use std::sync::Mutex;
-use log::error;
 use tauri::menu::*;
 use tauri::menu::{MenuBuilder, SubmenuBuilder};
 use tauri::Manager;
@@ -29,9 +29,13 @@ impl AppState {
     }
 }
 
-fn add_files(app: &AppHandle, app_state: &Mutex<AppState>, paths: &Vec<PathBuf>) -> Result<(), String> {
+fn add_files(
+    app: &AppHandle,
+    app_state: &Mutex<AppState>,
+    paths: &Vec<PathBuf>,
+) -> Result<(), String> {
     if paths.is_empty() {
-        return Ok(())
+        return Ok(());
     };
 
     let _ = app.emit("rancher://will-open-files", ());
@@ -39,10 +43,12 @@ fn add_files(app: &AppHandle, app_state: &Mutex<AppState>, paths: &Vec<PathBuf>)
     let new_files = paths
         .iter()
         .map(|path| SourceFile::open(path))
-        .collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
 
     let mut app_state = app_state
-        .lock().map_err(|_| "Couldn't lock the application state")?;
+        .lock()
+        .map_err(|_| "Couldn't lock the application state")?;
 
     app_state.add_source_files(new_files);
 
@@ -68,13 +74,14 @@ fn open_files(app_handle: &AppHandle) -> Result<(), String> {
                         FilePath::Path(p) => Some(p),
                     })
                     .collect::<Vec<_>>()
-            }) else { return };
+            }) else {
+                return;
+            };
 
             let app_state = app_handle.state::<Mutex<AppState>>();
 
-            let _ = add_files(&app_handle, app_state.inner(), &picked_paths).or_else(|e|
-                app_handle.emit("rancher://error", e)
-            );
+            let _ = add_files(&app_handle, app_state.inner(), &picked_paths)
+                .or_else(|e| app_handle.emit("rancher://error", e));
         });
 
     Ok(())
@@ -82,13 +89,14 @@ fn open_files(app_handle: &AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn open_files_command(app_handle: AppHandle) {
-    let _ = open_files(&app_handle).or_else(|e|
-        app_handle.emit("rancher://error", e)
-    );
+    let _ = open_files(&app_handle).or_else(|e| app_handle.emit("rancher://error", e));
 }
 
 #[tauri::command]
-fn load_project_command(app_handle: AppHandle, app_state: tauri::State<'_, Mutex<AppState>>) -> Result<AppState, String> {
+fn load_project_command(
+    app_handle: AppHandle,
+    app_state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<AppState, String> {
     let Ok(state) = app_state.lock() else {
         let error = "Couldn't lock the application state".to_string();
         let _ = app_handle.emit("rancher://error", &error);
@@ -120,12 +128,16 @@ fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String>
             };
 
             let Ok(mut document) = unlocked_state.project.export(&ordering) else {
-                let _ = app_handle.emit("rancher://error", "An error occurred while exporting the file");
+                let _ = app_handle.emit(
+                    "rancher://error",
+                    "An error occurred while exporting the file",
+                );
                 return;
             };
 
             let Ok(_) = document.save(path) else {
-                let _ = app_handle.emit("rancher://error", "An error occurred while saving the file");
+                let _ =
+                    app_handle.emit("rancher://error", "An error occurred while saving the file");
                 return;
             };
 
@@ -146,6 +158,7 @@ fn export_command(app_handle: AppHandle, ordering: Vec<Selector>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .on_window_event(|window, event| match event {
@@ -153,9 +166,8 @@ pub fn run() {
                 if let tauri::DragDropEvent::Drop { paths, position: _ } = drag_drop {
                     let app_state = window.state::<Mutex<AppState>>();
 
-                    let _ = add_files(window.app_handle(), app_state.inner(), paths).or_else(|e|
-                        window.emit("rancher://error", e)
-                    );
+                    let _ = add_files(window.app_handle(), app_state.inner(), paths)
+                        .or_else(|e| window.emit("rancher://error", e));
                 }
             }
             _ => {}
