@@ -7,9 +7,6 @@
   ],
   "permissions": [
     "core:default",
-    "log:allow-log",
-    "log:default",
-    "dialog:default",
     "dialog:default",
     "fs:default"
   ]
