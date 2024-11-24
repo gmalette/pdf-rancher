@@ -143,7 +143,7 @@
 <project>
   {#if project.source_files.length === 0}
     <dropzone class:active={isDraggingFilesOver}>
-      <i class="fa-regular fa-file-circle-plus"></i>
+      <i class="fa-solid fa-file-circle-plus"></i>
     </dropzone>
   {:else}
     <previews use:dndzone={{items: project.ordering, flipDurationMs: 100}} onconsider={handleDnd} onfinalize={handleDnd}>
@@ -194,9 +194,6 @@
 
     previews {
         display: block;
-        /*overflow-x: auto;*/
-        /*overflow-y: hidden;*/
-        /*white-space: nowrap;*/
     }
 
     page {
