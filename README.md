@@ -1,6 +1,15 @@
 # PDF Rancher
 
-PDF Rancher is a versatile application designed for merging and splicing PDF files. While macOS users can rely on Preview for these tasks, Windows users often lack a comparable native solution. Although web services are available, they pose significant concerns regarding data sovereignty. PDF Rancher addresses this issue by providing a secure, offline tool for managing your PDF files.
+PDF Rancher is a versatile application designed for merging and splicing PDF files. While macOS users can rely on Preview for these tasks, Windows users often lack a comparable native solution. Although web services are available, they pose significant concerns regarding data sovereignty. PDF Rancher addresses this issue by providing a secure, offline tool for managing your PDF files. Unlike Adobe and Foxit, which charge a subscription at extortionary rates, PDF Rancher is completely free.
+
+## Comparison Table
+
+| Feature                    | PDF Rancher | macOS Preview | Foxit & Adobe PDF Editor | Online PDF Services | PDF Reader |
+|----------------------------|-------------|---------------|--------------------------|---------------------|------------|
+| Free                       | ✅          | ✅            | ❌                       | ✅                  | ✅         |
+| Data sovereignty           | ✅          | ✅            | ✅                       | ❌                  | ✅         |
+| Merge and splice documents | ✅        | ✅            | ✅                       | ✅                  | ❌         |
+| Modify content             | ❌          | ✅            | ✅                       | ✅                  | ❌         |
 
 ## Contributing
 
