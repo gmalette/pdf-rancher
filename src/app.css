@@ -1,6 +1,13 @@
 :root {
+  --default-line-height: 1.5;
+  --file-height: 150px;
+  --page-height: 100%;
+  --page-margin-right: 10px;
+  --dropzone-grey: #ccc;
+  --active-color: #23c42d;
+
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  line-height: var(--default-line-height);
   font-weight: 400;
 
   color-scheme: light dark;
@@ -11,11 +18,12 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --file-height: 150px;
-  --page-height: 100%;
-  --page-margin-right: 10px;
-  --dropzone-grey: #ccc;
-  --active-color: #23c42d;
+}
+
+i {
+  .fas, .far, .fab, .fa-solid, .fa-regular, .fa-brands {
+    line-height: var(--default-line-height);
+  }
 }
 
 * {

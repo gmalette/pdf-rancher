@@ -80,8 +80,9 @@ fn open_files(app_handle: &AppHandle) -> Result<(), String> {
 
             let app_state = app_handle.state::<Mutex<AppState>>();
 
-            let _ = add_files(&app_handle, app_state.inner(), &picked_paths)
-                .or_else(|e| app_handle.emit("rancher://error", e));
+            if let Err(e) = add_files(&app_handle, app_state.inner(), &picked_paths) {
+                notify_error(&app_handle, &e);
+            }
         });
 
     Ok(())
@@ -89,7 +90,9 @@ fn open_files(app_handle: &AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn open_files_command(app_handle: AppHandle) {
-    let _ = open_files(&app_handle).or_else(|e| app_handle.emit("rancher://error", e));
+    if let Err(e) = open_files(&app_handle) {
+        notify_error(&app_handle, &e);
+    };
 }
 
 #[tauri::command]
@@ -99,7 +102,7 @@ fn load_project_command(
 ) -> Result<AppState, String> {
     let Ok(state) = app_state.lock() else {
         let error = "Couldn't lock the application state".to_string();
-        let _ = app_handle.emit("rancher://error", &error);
+        notify_error(&app_handle, &error);
         return Err(error);
     };
 
@@ -123,23 +126,18 @@ fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String>
 
             let state = app_handle.state::<Mutex<AppState>>();
             let Ok(unlocked_state) = state.lock() else {
-                let _ = app_handle.emit("rancher://error", "Couldn't lock the application state");
-                return;
+                return notify_error(&app_handle, "Couldn't lock the application state");
             };
 
-            let Ok(mut document) = unlocked_state.project.export(&ordering) else {
-                let _ = app_handle.emit(
-                    "rancher://error",
-                    "An error occurred while exporting the file",
-                );
-                return;
-            };
+            let Ok(mut document) = unlocked_state.project.export(&ordering).or_else(|e| {
+                notify_error(&app_handle, format!("An error occurred while exporting the file: {}", e).as_str());
+                Err(())
+            }) else { return };
 
-            let Ok(_) = document.save(path) else {
-                let _ =
-                    app_handle.emit("rancher://error", "An error occurred while saving the file");
-                return;
-            };
+            let Ok(_) = document.save(path).or_else(|e| {
+                notify_error(&app_handle, format!("An error occurred while saving the file: {}", e).as_str());
+                Err(())
+            }) else { return };
 
             let _ = app_handle.emit("rancher://did-export", ());
         });
@@ -147,12 +145,15 @@ fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String>
     Ok(())
 }
 
+fn notify_error(app_handle: &AppHandle, error: &str) {
+    error!("{}", error);
+    let _ = app_handle.emit("rancher://error", error);
+}
+
 #[tauri::command]
 fn export_command(app_handle: AppHandle, ordering: Vec<Selector>) {
-    let _ = export(&app_handle, ordering).or_else(|e| {
-        error!("{}", e);
-        app_handle.emit("rancher://error", e.to_string())
-    });
+    if let Err(e) = export(&app_handle, ordering) {
+        notify_error(&app_handle, &e); };
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -166,8 +167,9 @@ pub fn run() {
                 if let tauri::DragDropEvent::Drop { paths, position: _ } = drag_drop {
                     let app_state = window.state::<Mutex<AppState>>();
 
-                    let _ = add_files(window.app_handle(), app_state.inner(), paths)
-                        .or_else(|e| window.emit("rancher://error", e));
+                    if let Err(e) = add_files(window.app_handle(), app_state.inner(), paths) {
+                        notify_error(window.app_handle(), &e);
+                    }
                 }
             }
             _ => {}
@@ -176,12 +178,13 @@ pub fn run() {
             let id = event.id();
 
             if id == "open-file" {
-                let _ = open_files(&app).or_else(|e| app.emit("rancher://error", e));
-                return;
+                if let Err(e) = open_files(&app) {
+                    return notify_error(&app, &e);
+                }
             }
 
             if id == "export" {
-                let _ = app.emit("export-requested", ());
+                let _ = app.emit("rancher://export-requested", ());
                 return;
             }
         })

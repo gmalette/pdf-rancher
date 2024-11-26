@@ -3,6 +3,7 @@
   import {invoke} from '@tauri-apps/api/core'
   import {listen} from "@tauri-apps/api/event";
   import { dndzone } from 'svelte-dnd-action';
+  import Banners from "./lib/Banners.svelte";
 
   type Page = {
     preview_jpg: string
@@ -64,28 +65,17 @@
     loadProject()
   })
 
-  function openFiles() {
-    invoke("open_files_command").then((response: any) => {
-      updateProject(response.project as ProjectResponse);
-    })
-  }
-
   function previewToDataUrl(preview_jpg: string) {
     return "data:image/jpg;base64," + preview_jpg
-  }
-
-  function baseName(path: string) {
-    return path.split('/').pop()
   }
 
   listen("rancher://did-open-files", () => {
     loadProject()
   })
 
-  listen("export-requested", () => {
+  listen("rancher://export-requested", () => {
     // select only enabled pages
     const ordering = project.ordering.filter((ordering) => ordering.enabled)
-    info(JSON.stringify(ordering))
     invoke("export_command", { ordering })
   })
 
@@ -140,8 +130,10 @@
   attachConsole();
 </script>
 
+<Banners/>
+
 <project>
-  {#if project.source_files.length === 0}
+  {#if project.source_files.length === 0 || isDraggingFilesOver}
     <dropzone class:active={isDraggingFilesOver}>
       <i class="fa-solid fa-file-circle-plus"></i>
     </dropzone>
