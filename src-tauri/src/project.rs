@@ -143,11 +143,14 @@ impl Project {
             let Selector {
                 source_file_index: source_file_id,
                 page_index,
+                rotation,
             } = selector;
             let (object_id, object) = &source_pages[*source_file_id][*page_index];
             if let Ok(dictionary) = object.as_dict() {
                 let mut dictionary = dictionary.clone();
                 dictionary.set("Parent", pages_object.0);
+
+                rotation.as_rotation().map(|r| dictionary.set("Rotate", r));
 
                 selected_pages.push(*object_id);
 
@@ -226,9 +229,34 @@ impl Project {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+enum Rotation {
+    // serialize as just "0"
+    #[serde(rename = "0")]
+    R0,
+    #[serde(rename = "90")]
+    R90,
+    #[serde(rename = "180")]
+    R180,
+    #[serde(rename = "270")]
+    R270,
+}
+
+impl Rotation {
+    fn as_rotation(&self) -> Option<u32> {
+        match self {
+            Rotation::R0 => None,
+            Rotation::R90 => Some(90),
+            Rotation::R180 => Some(180),
+            Rotation::R270 => Some(270),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Selector {
     source_file_index: usize,
     page_index: usize,
+    rotation: Rotation,
 }
 
 impl Selector {
@@ -236,6 +264,7 @@ impl Selector {
         Self {
             source_file_index,
             page_index,
+            rotation: Rotation::R0,
         }
     }
 }
@@ -320,8 +349,8 @@ fn load_pdf_pages(path: &PathBuf) -> Result<Vec<Page>> {
     let document = pdfium.load_pdf_from_byte_slice(str.as_bytes(), None)?;
 
     let render_config = PdfRenderConfig::new()
-        .set_target_width(500)
-        .set_maximum_height(500);
+        .set_target_width(800)
+        .set_maximum_height(800);
 
     let mut previews = Vec::new();
 
@@ -362,8 +391,8 @@ mod test {
         let source_file = SourceFile::open(&path).unwrap();
         assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
-        assert_eq!(386, source_file.pages[0].width());
-        assert_eq!(500, source_file.pages[0].height());
+        assert_eq!(618, source_file.pages[0].width());
+        assert_eq!(800, source_file.pages[0].height());
     }
 
     #[test]
@@ -372,8 +401,8 @@ mod test {
         let source_file = SourceFile::open(&path).unwrap();
         assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
-        assert_eq!(304, source_file.pages[0].width());
-        assert_eq!(500, source_file.pages[0].height());
+        assert_eq!(486, source_file.pages[0].width());
+        assert_eq!(800, source_file.pages[0].height());
     }
 
     #[test]
@@ -384,8 +413,8 @@ mod test {
         assert_eq!(3, source_file.pages.len());
 
         // Paysage pages are rotated 90°
-        assert_eq!(500, source_file.pages[0].width());
-        assert_eq!(386, source_file.pages[0].height());
+        assert_eq!(800, source_file.pages[0].width());
+        assert_eq!(618, source_file.pages[0].height());
     }
 
     #[test]
@@ -421,7 +450,39 @@ mod test {
         let count_streams = document
             .objects
             .iter()
-            .filter(|(id, object)| {
+            .filter(|(_id, object)| {
+                if let Object::Stream(s) = object {
+                    let contents = s.decompressed_content().unwrap();
+                    // The streams would contain (1), (2), or (3)
+                    contents
+                        .windows(3)
+                        .find(|w| w == &[40, 49, 41] || w == &[40, 50, 41] || w == &[40, 51, 41])
+                        .is_some()
+                } else {
+                    false
+                }
+            })
+            .count();
+
+        // Make sure hidden objects have been pruned
+        assert_eq!(3, count_streams);
+    }
+
+    // TODO
+    fn export_returns_errors() {
+        let project = Project {
+            source_files: vec![SourceFile::open(&PathBuf::from("test/")).unwrap()],
+        };
+        let selectors = vec![Selector::new(0, 0)];
+
+        let document = project.export(&selectors).unwrap();
+
+        assert_eq!(3, document.page_iter().count());
+
+        let count_streams = document
+            .objects
+            .iter()
+            .filter(|(_id, object)| {
                 if let Object::Stream(s) = object {
                     let contents = s.decompressed_content().unwrap();
                     // The streams would contain (1), (2), or (3)
@@ -440,34 +501,62 @@ mod test {
     }
 
     #[test]
-    fn export_returns_errors() {
+    fn test_rotate() {
         let project = Project {
-            source_files: vec![SourceFile::open(&PathBuf::from("test/")).unwrap()],
+            source_files: vec![SourceFile::open(&PathBuf::from("test/basic.pdf")).unwrap()],
         };
-        let selectors = vec![Selector::new(0, 0)];
+
+        let selectors = vec![
+            Selector {
+                source_file_index: 0,
+                page_index: 0,
+                rotation: Rotation::R0,
+            },
+            Selector {
+                source_file_index: 0,
+                page_index: 1,
+                rotation: Rotation::R270,
+            },
+            Selector {
+                source_file_index: 0,
+                page_index: 2,
+                rotation: Rotation::R90,
+            },
+        ];
 
         let document = project.export(&selectors).unwrap();
 
-        assert_eq!(3, document.page_iter().count());
+        let pages = document.page_iter().collect::<Vec<_>>();
 
-        let count_streams = document
-            .objects
-            .iter()
-            .filter(|(id, object)| {
-                if let Object::Stream(s) = object {
-                    let contents = s.decompressed_content().unwrap();
-                    // The streams would contain (1), (2), or (3)
-                    contents
-                        .windows(3)
-                        .find(|w| w == &[40, 49, 41] || w == &[40, 50, 41] || w == &[40, 51, 41])
-                        .is_some()
-                } else {
-                    false
-                }
-            })
-            .count();
+        assert_eq!(3, pages.len());
 
-        // Make sure hidden objects have been pruned
-        assert_eq!(3, count_streams);
+        assert_eq!(
+            None,
+            document
+                .get_dictionary(pages[0])
+                .unwrap()
+                .get("Rotate".as_bytes())
+                .ok(),
+        );
+        assert_eq!(
+            270,
+            document
+                .get_dictionary(pages[1])
+                .unwrap()
+                .get("Rotate".as_bytes())
+                .unwrap()
+                .as_i64()
+                .unwrap()
+        );
+        assert_eq!(
+            90,
+            document
+                .get_dictionary(pages[2])
+                .unwrap()
+                .get("Rotate".as_bytes())
+                .unwrap()
+                .as_i64()
+                .unwrap()
+        );
     }
 }
