@@ -6,6 +6,7 @@ use project::SourceFile;
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::thread;
 use tauri::menu::*;
 use tauri::menu::{MenuBuilder, SubmenuBuilder};
 use tauri::Manager;
@@ -114,33 +115,46 @@ fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String>
 
     let app_handle = app_handle.clone();
 
-    app_handle
-        .dialog()
-        .file()
-        .set_file_name("project.pdf")
-        .save_file(move |path| {
-            let path = match path {
-                Some(FilePath::Path(p)) => p,
-                _ => return,
-            };
+    thread::spawn(move || {
+        let path = app_handle
+            .dialog()
+            .file()
+            .set_file_name("project.pdf")
+            .add_filter("PDF", &["pdf"])
+            .blocking_save_file();
 
-            let state = app_handle.state::<Mutex<AppState>>();
-            let Ok(unlocked_state) = state.lock() else {
-                return notify_error(&app_handle, "Couldn't lock the application state");
-            };
+        let path = match path {
+            Some(FilePath::Path(p)) => p,
+            _ => return,
+        };
 
-            let Ok(mut document) = unlocked_state.project.export(&ordering).or_else(|e| {
-                notify_error(&app_handle, format!("An error occurred while exporting the file: {}", e).as_str());
-                Err(())
-            }) else { return };
+        let state = app_handle.state::<Mutex<AppState>>();
+        let Ok(unlocked_state) = state.lock() else {
+            return notify_error(&app_handle, "Couldn't lock the application state");
+        };
 
-            let Ok(_) = document.save(path).or_else(|e| {
-                notify_error(&app_handle, format!("An error occurred while saving the file: {}", e).as_str());
-                Err(())
-            }) else { return };
+        let Ok(mut document) = unlocked_state.project.export(&ordering).or_else(|e| {
+            notify_error(
+                &app_handle,
+                format!("An error occurred while exporting the file: {}", e).as_str(),
+            );
+            Err(())
+        }) else {
+            return;
+        };
 
-            let _ = app_handle.emit("rancher://did-export", ());
-        });
+        let Ok(_) = document.save(path).or_else(|e| {
+            notify_error(
+                &app_handle,
+                format!("An error occurred while saving the file: {}", e).as_str(),
+            );
+            Err(())
+        }) else {
+            return;
+        };
+
+        let _ = app_handle.emit("rancher://did-export", ());
+    });
 
     Ok(())
 }
@@ -153,7 +167,8 @@ fn notify_error(app_handle: &AppHandle, error: &str) {
 #[tauri::command]
 fn export_command(app_handle: AppHandle, ordering: Vec<Selector>) {
     if let Err(e) = export(&app_handle, ordering) {
-        notify_error(&app_handle, &e); };
+        notify_error(&app_handle, &e);
+    };
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
