@@ -34,8 +34,8 @@ impl Project {
         let documents = self
             .source_files
             .iter()
-            .map(|source_file| Ok((source_file.id.clone(), Document::load(&source_file.path)?)))
-            .collect::<Result<Vec<_>>>()?;
+            .map(|source_file| source_file.document.clone())
+            .collect::<Vec<_>>();
 
         // Define a starting `max_id` (will be used as start index for object_ids).
         let mut max_id = 1;
@@ -47,7 +47,7 @@ impl Project {
 
         let mut source_pages: Vec<Vec<(ObjectId, Object)>> = Vec::new();
 
-        for (_, mut doc) in documents {
+        for mut doc in documents.into_iter() {
             let mut first = false;
             let mut source_page = Vec::new();
 
@@ -297,11 +297,14 @@ impl Page {
 pub struct SourceFile {
     id: String,
     path: String,
+    #[serde(skip_serializing)]
+    document: Document,
     pages: Vec<Page>,
 }
 
 impl SourceFile {
     pub fn open(path: &PathBuf) -> Result<Self> {
+        let document = Document::load(path)?;
         // random string
         let id = rand::thread_rng()
             .sample_iter(&Alphanumeric)
@@ -310,9 +313,11 @@ impl SourceFile {
             .collect();
         let path_str = path.to_string_lossy().to_string();
         let pages = load_pdf_pages(path)?;
+
         Ok(Self {
             id,
             path: path_str,
+            document,
             pages,
         })
     }
