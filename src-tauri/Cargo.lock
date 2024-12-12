@@ -97,29 +97,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c95c10ba0b00a02636238b814946408b1322d5ac4760326e6fb8ec956d85775"
 
 [[package]]
-name = "app"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "cocoa 0.25.0",
- "image",
- "log",
- "lopdf",
- "pdfium-render",
- "rand 0.7.3",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-log",
- "tauri-plugin-window-state",
- "thiserror 2.0.3",
-]
-
-[[package]]
 name = "arbitrary"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2993,6 +2970,29 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "pdf-rancher"
+version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "cocoa 0.25.0",
+ "image",
+ "log",
+ "lopdf",
+ "pdfium-render",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-log",
+ "tauri-plugin-window-state",
+ "thiserror 2.0.3",
+]
 
 [[package]]
 name = "pdfium-render"

@@ -1,8 +1,8 @@
 [package]
-name = "app"
-version = "0.1.1"
-description = "A Tauri App"
-authors = ["you"]
+name = "pdf-rancher"
+version = "0.1.2"
+description = "PDF Rancher"
+authors = ["Guillaume Malette"]
 license = ""
 repository = ""
 edition = "2021"
