@@ -304,7 +304,16 @@ pub struct SourceFile {
 
 impl SourceFile {
     pub fn open(path: &PathBuf) -> Result<Self> {
-        let document = Document::load(path)?;
+        let mut bytes = Vec::new();
+        File::open(path)?.read_to_end(&mut bytes)?;
+
+        let offset = bytes[..1024].windows(5).position(|w| w == b"%PDF-").ok_or_else(|| {
+            anyhow!("Failed to find PDF header in file {}", path.to_string_lossy())
+        })?;
+
+        let reader = Cursor::new(&bytes[offset..]);
+
+        let document = Document::load_from(reader)?;
         // random string
         let id = rand::thread_rng()
             .sample_iter(&Alphanumeric)
