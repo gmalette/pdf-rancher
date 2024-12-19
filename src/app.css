@@ -1,6 +1,7 @@
 :root {
   --default-line-height: 1.5;
   --file-height: 150px;
+  --file-full-size-constraint: 500px;
   --page-height: 100%;
   --page-margin-right: 10px;
   --dropzone-grey: #ccc;

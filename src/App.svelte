@@ -7,6 +7,7 @@
   import FocusedPage from "./lib/FocusedPage.svelte";
   import {type Ordering, previewToDataUrl, type Project, type SourceFile} from "./lib/project";
   import {tick} from "svelte";
+  import Preview from "./lib/Preview.svelte";
 
   let project: Project = $state({ source_files: [], ordering: [] })
   let isDraggingFilesOver: boolean = $state(false)
@@ -129,26 +130,6 @@
     focused = null
   }
 
-  let previewsHtmlElement: Element;
-
-  $effect.pre(() => {
-    project;
-    previewsHtmlElement;
-
-    tick().then(() => {
-      if (previewsHtmlElement) {
-        for (let page of previewsHtmlElement.children) {
-          const img = page.querySelector('img')!;
-          if (img.classList.contains('rotate90') || img.classList.contains('rotate270')) {
-            page.style.width = `${img.clientHeight}px`;
-          } else {
-            page.style.width = null;
-          }
-        }
-      }
-    })
-  });
-
   attachConsole();
 </script>
 
@@ -169,9 +150,8 @@
             onclick={(_: MouseEvent) => onPageClick(pageNum)}
             class:disabled={!ordering.enabled}>
 
-          <preview>
-            <img src={previewToDataUrl(page(ordering).preview_jpg)} alt="Page preview for page number {pageNum + 1}" class="rotate{ordering.rotation}" />
-          </preview>
+          <Preview jpg="{page(ordering).preview_jpg}" rotation={ordering.rotation} pageNum={pageNum + 1}/>
+
           <p>{pageNum + 1}</p>
         </page>
       {/each}
@@ -232,25 +212,7 @@
             margin: 0;
         }
 
-        preview {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: var(--file-height);
-            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-            background-color: #ff00ff;
-        }
 
-        img {
-            max-height: 100%;
-            max-width: none;
-            width: auto;
-            transform-origin: center;
-
-            &.rotate90 { transform: rotate(90deg); max-height: unset; max-width: var(--file-height) }
-            &.rotate180 { transform: rotate(180deg); }
-            &.rotate270 { transform: rotate(270deg); max-height: unset; max-width: var(--file-height) }
-        }
     }
 
     page:not(:last-child) {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type {Page} from "./project";
   import {previewToDataUrl} from "./project.js";
+  import Preview from "./Preview.svelte";
 
   let { rotation, page, closeFocus }: { rotation: number, page: Page, closeFocus: (a: number) => void } = $props();
   let newRotation: number = $state(rotation);
@@ -28,27 +29,12 @@
       <i class="fas fa-undo"></i>
     </button>
   </tools>
-  <page class="rotate{newRotation}">
-    <img src={previewToDataUrl(page.preview_jpg)} alt="Page preview" />
-  </page>
+  <Preview fullSize={true} jpg={page.preview_jpg} rotation={newRotation} pageNum={1} />
 </div>
 
 <style>
   tools {
       display: block;
       padding-bottom: 1rem;
-  }
-
-  page {
-      width: 100%;
-      display: flex;
-
-      &.rotate90 { transform: rotate(90deg); }
-      &.rotate180 { transform: rotate(180deg); }
-      &.rotate270 { transform: rotate(270deg); }
-
-      img {
-          margin: auto;
-      }
   }
 </style>
