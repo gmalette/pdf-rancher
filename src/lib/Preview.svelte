@@ -9,6 +9,7 @@
 
   $effect.pre(() => {
     previewHtmlElement;
+    rotation;
 
     tick().then(() => {
       if (previewHtmlElement) {

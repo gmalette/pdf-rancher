@@ -143,7 +143,7 @@
   {:else if focused !== null}
     <FocusedPage rotation={project.ordering[focused].rotation} page={page(project.ordering[focused])} {closeFocus}/>
   {:else}
-    <previews use:dndzone={{items: project.ordering, flipDurationMs: 100}} onconsider={handleDnd} onfinalize={handleDnd} bind:this={previewsHtmlElement}>
+    <previews use:dndzone={{items: project.ordering, flipDurationMs: 100}} onconsider={handleDnd} onfinalize={handleDnd}>
       {#each project.ordering as ordering, pageNum (ordering.id)}
         <page
             oncontextmenu={(e: MouseEvent) => onContextMenu(e, pageNum)}
@@ -211,8 +211,6 @@
             padding: 0;
             margin: 0;
         }
-
-
     }
 
     page:not(:last-child) {
