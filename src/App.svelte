@@ -40,7 +40,7 @@
     }
   }
 
-  function loadProject() {
+  async function loadProject() {
     invoke("load_project_command").then((response: any) => {
       updateProject(response.project as ProjectResponse);
     });
@@ -55,8 +55,9 @@
   })
 
   listen("rancher://did-open-files", () => {
-    isOpeningFiles = false
-    loadProject()
+    loadProject().then(() => {
+      isOpeningFiles = false
+    })
   })
 
   listen("rancher://export-requested", () => {
