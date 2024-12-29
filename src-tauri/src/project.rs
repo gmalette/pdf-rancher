@@ -12,6 +12,7 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Cursor, Read};
 use std::path::PathBuf;
+use std::sync::mpsc;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Project {
@@ -303,7 +304,7 @@ pub struct SourceFile {
 }
 
 impl SourceFile {
-    pub fn open(path: &PathBuf) -> Result<Self> {
+    pub fn open(path: &PathBuf, sender: Option<mpsc::Sender<(usize, usize)>>) -> Result<Self> {
         let mut bytes = Vec::new();
         File::open(path)?.read_to_end(&mut bytes)?;
 
@@ -321,7 +322,7 @@ impl SourceFile {
             .map(char::from)
             .collect();
         let path_str = path.to_string_lossy().to_string();
-        let pages = load_pdf_pages(path)?;
+        let pages = load_pdf_pages(path, sender)?;
 
         Ok(Self {
             id,
@@ -354,7 +355,7 @@ fn pdfium() -> Result<Pdfium> {
     Err(anyhow!("Failed to load Pdfium library"))
 }
 
-fn load_pdf_pages(path: &PathBuf) -> Result<Vec<Page>> {
+fn load_pdf_pages(path: &PathBuf, sender: Option<mpsc::Sender<(usize, usize)>>) -> Result<Vec<Page>> {
     let pdfium = pdfium()?;
 
     let mut file = File::open(path)?;
@@ -368,7 +369,8 @@ fn load_pdf_pages(path: &PathBuf) -> Result<Vec<Page>> {
 
     let mut previews = Vec::new();
 
-    for page in document.pages().iter() {
+    let page_count = document.pages().len() as usize;
+    for (index, page) in document.pages().iter().enumerate() {
         let mut bytes = Cursor::new(Vec::new());
 
         let img = page
@@ -379,6 +381,10 @@ fn load_pdf_pages(path: &PathBuf) -> Result<Vec<Page>> {
         img.write_to(&mut bytes, image::ImageFormat::Jpeg)?;
 
         previews.push(Page::new(bytes.into_inner(), img.dimensions()));
+
+        if let Some(sender) = &sender {
+            let _ = sender.send((index + 1, page_count));
+        }
     }
 
     Ok(previews)
@@ -402,7 +408,7 @@ mod test {
     #[test]
     fn test_open() {
         let path = PathBuf::from("test/basic.pdf");
-        let source_file = SourceFile::open(&path).unwrap();
+        let source_file = SourceFile::open(&path, None).unwrap();
         assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
         assert_eq!(618, source_file.pages[0].width());
@@ -412,7 +418,7 @@ mod test {
     #[test]
     fn test_open_legal() {
         let path = PathBuf::from("test/legal.pdf");
-        let source_file = SourceFile::open(&path).unwrap();
+        let source_file = SourceFile::open(&path, None).unwrap();
         assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
         assert_eq!(486, source_file.pages[0].width());
@@ -422,7 +428,7 @@ mod test {
     #[test]
     fn test_open_paysage() {
         let path = PathBuf::from("test/paysage.pdf");
-        let source_file = SourceFile::open(&path).unwrap();
+        let source_file = SourceFile::open(&path, None).unwrap();
         assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
 
@@ -434,7 +440,7 @@ mod test {
     #[test]
     fn test_open_returns_errors() {
         let path = PathBuf::from("test/potato.pdf");
-        let source_file = SourceFile::open(&path);
+        let source_file = SourceFile::open(&path, None);
         assert!(source_file.is_err());
         assert_eq!(
             "No such file or directory (os error 2)",
@@ -446,9 +452,9 @@ mod test {
     fn test_merge_documents() {
         let project = Project {
             source_files: vec![
-                SourceFile::open(&PathBuf::from("test/basic.pdf")).unwrap(),
-                SourceFile::open(&PathBuf::from("test/legal.pdf")).unwrap(),
-                SourceFile::open(&PathBuf::from("test/paysage.pdf")).unwrap(),
+                SourceFile::open(&PathBuf::from("test/basic.pdf"), None).unwrap(),
+                SourceFile::open(&PathBuf::from("test/legal.pdf"), None).unwrap(),
+                SourceFile::open(&PathBuf::from("test/paysage.pdf"), None).unwrap(),
             ],
         };
         let selectors = vec![
@@ -485,7 +491,7 @@ mod test {
     // TODO
     fn export_returns_errors() {
         let project = Project {
-            source_files: vec![SourceFile::open(&PathBuf::from("test/")).unwrap()],
+            source_files: vec![SourceFile::open(&PathBuf::from("test/"), None).unwrap()],
         };
         let selectors = vec![Selector::new(0, 0)];
 
@@ -517,7 +523,7 @@ mod test {
     #[test]
     fn test_rotate() {
         let project = Project {
-            source_files: vec![SourceFile::open(&PathBuf::from("test/basic.pdf")).unwrap()],
+            source_files: vec![SourceFile::open(&PathBuf::from("test/basic.pdf"), None).unwrap()],
         };
 
         let selectors = vec![

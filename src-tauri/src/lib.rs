@@ -5,7 +5,7 @@ use log::error;
 use project::SourceFile;
 use serde::Serialize;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{mpsc, Mutex};
 use std::thread;
 use tauri::menu::*;
 use tauri::menu::{MenuBuilder, SubmenuBuilder};
@@ -30,10 +30,17 @@ impl AppState {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct ImportProgress {
+    current_document: usize,
+    total_documents: usize,
+    current_page: usize,
+    total_pages: usize,
+}
+
 fn add_files(
-    app: &AppHandle,
-    app_state: &Mutex<AppState>,
-    paths: &Vec<PathBuf>,
+    app: AppHandle,
+    paths: Vec<PathBuf>,
 ) -> Result<(), String> {
     if paths.is_empty() {
         return Ok(());
@@ -41,19 +48,53 @@ fn add_files(
 
     let _ = app.emit("rancher://will-open-files", ());
 
-    let new_files = paths
-        .iter()
-        .map(|path| SourceFile::open(path))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
+    thread::spawn(move || {
+        let app_state = app.state::<Mutex<AppState>>();
 
-    let mut app_state = app_state
-        .lock()
-        .map_err(|_| "Couldn't lock the application state")?;
+        let mut new_files = Vec::new();
+        let total_documents = paths.len();
 
-    app_state.add_source_files(new_files);
+        for (index, path) in paths.into_iter().enumerate() {
+            let (sender, receiver) = mpsc::channel();
 
-    let _ = app.emit("rancher://did-open-files", ());
+            let import_thread = thread::spawn(move || {
+                SourceFile::open(&path, Some(sender.clone()))
+            });
+
+            let receiver_app = app.clone();
+            let update_progress_thread = thread::spawn(move || {
+                for (current_page, total_pages) in receiver {
+                    let progress = ImportProgress {
+                        current_document: index + 1,
+                        total_documents,
+                        current_page,
+                        total_pages
+                    };
+                    let _ = receiver_app.emit("rancher://did-open-file-page", progress);
+                }
+            });
+
+            let new_file = import_thread.join().unwrap();
+            update_progress_thread.join().unwrap();
+
+            match new_file {
+                Ok(file) => new_files.push(file),
+                Err(e) => {
+                    let _ = app.emit("rancher://did-not-open-files", ());
+                    return notify_error(&app, &e.to_string());
+                }
+            }
+
+        }
+
+        let mut app_state = app_state
+            .lock()
+            .unwrap();
+
+        app_state.add_source_files(new_files);
+
+        let _ = app.emit("rancher://did-open-files", ());
+    });
 
     Ok(())
 }
@@ -81,7 +122,7 @@ fn open_files(app_handle: &AppHandle) -> Result<(), String> {
 
             let app_state = app_handle.state::<Mutex<AppState>>();
 
-            if let Err(e) = add_files(&app_handle, app_state.inner(), &picked_paths) {
+            if let Err(e) = add_files(app_handle.clone(), picked_paths) {
                 notify_error(&app_handle, &e);
             }
         });
@@ -182,7 +223,7 @@ pub fn run() {
                 if let tauri::DragDropEvent::Drop { paths, position: _ } = drag_drop {
                     let app_state = window.state::<Mutex<AppState>>();
 
-                    if let Err(e) = add_files(window.app_handle(), app_state.inner(), paths) {
+                    if let Err(e) = add_files(window.app_handle().clone(), paths.clone()) {
                         notify_error(window.app_handle(), &e);
                     }
                 }

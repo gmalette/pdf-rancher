@@ -5,12 +5,13 @@
   import { dndzone } from 'svelte-dnd-action';
   import Banners from "./lib/Banners.svelte";
   import FocusedPage from "./lib/FocusedPage.svelte";
-  import {type Ordering, previewToDataUrl, type Project, type SourceFile} from "./lib/project";
-  import {tick} from "svelte";
+  import {type Ordering, type Project, type SourceFile} from "./lib/project";
   import Preview from "./lib/Preview.svelte";
+  import OpeningFiles from "./lib/OpeningFiles.svelte";
 
   let project: Project = $state({ source_files: [], ordering: [] })
   let isDraggingFilesOver: boolean = $state(false)
+  let isOpeningFiles: boolean = $state(false)
   let focused: number | null = $state(null)
 
   type ProjectResponse = {
@@ -49,7 +50,12 @@
     loadProject()
   })
 
+  listen("rancher://will-open-files", () => {
+    isOpeningFiles = true
+  })
+
   listen("rancher://did-open-files", () => {
+    isOpeningFiles = false
     loadProject()
   })
 
@@ -136,7 +142,9 @@
 <Banners/>
 
 <project>
-  {#if project.source_files.length === 0 || isDraggingFilesOver}
+  {#if isOpeningFiles}
+    <OpeningFiles/>
+  {:else if project.source_files.length === 0 || isDraggingFilesOver}
     <dropzone class:active={isDraggingFilesOver}>
       <i class="fa-solid fa-file-circle-plus"></i>
     </dropzone>
