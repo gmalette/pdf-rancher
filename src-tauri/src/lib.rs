@@ -10,7 +10,7 @@ use tauri::menu::*;
 use tauri::menu::{MenuBuilder, SubmenuBuilder};
 use tauri::Manager;
 use tauri::{AppHandle, Emitter};
-use tauri_plugin_dialog::{DialogExt, FilePath};
+use tauri_plugin_dialog::{DialogExt, FilePath, MessageDialogButtons};
 
 #[derive(Debug, Clone, Serialize)]
 struct AppState {
@@ -98,8 +98,6 @@ async fn add_files(
 }
 
 async fn open_files(app_handle: &AppHandle) -> Result<(), String> {
-    use tauri_plugin_dialog::DialogExt;
-
     let picked_paths =
         app_handle
             .dialog()
@@ -216,6 +214,25 @@ async fn export_command(app_handle: AppHandle, ordering: Vec<Selector>) -> Resul
     result
 }
 
+async fn clear_project(app_handle: AppHandle) {
+    let cloned_handle = app_handle.clone();
+    let confirm =
+        tauri::async_runtime::spawn_blocking(move || {
+            cloned_handle.dialog().message("Are you sure you want to clear the project?").buttons(MessageDialogButtons::OkCancel).blocking_show()
+        }).await.unwrap();
+
+    if !confirm {
+        return
+    }
+
+    let app_state = app_handle.state::<Mutex<AppState>>();
+    let mut app_state = app_state.lock().unwrap();
+
+    app_state.project.clear();
+
+    let _ = app_handle.emit("rancher://did-clear-project", ());
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -228,7 +245,7 @@ pub fn run() {
                     let app_handle = window.app_handle().clone();
                     let paths = paths.clone();
 
-                    tauri::async_runtime::block_on(async move {
+                    tauri::async_runtime::spawn(async move {
                         let result = add_files(app_handle.clone(), paths).await;
 
                         if let Err(e) = &result {
@@ -244,7 +261,7 @@ pub fn run() {
 
             if id == "open-file" {
                 let app_handle = app.clone();
-                let _ = tauri::async_runtime::spawn(async move {
+                tauri::async_runtime::spawn(async move {
                     let result = open_files(&app_handle).await;
 
                     if let Err(e) = &result {
@@ -257,11 +274,21 @@ pub fn run() {
                 let _ = app.emit("rancher://export-requested", ());
                 return;
             }
+
+            if id == "clear" {
+                tauri::async_runtime::spawn(clear_project(app.clone()));
+            }
         })
         .menu(|app| {
+            let open_file = MenuItem::with_id(app, "open-file", "Open File…", true, Some("CmdOrCtrl+O"))?;
+            let export = MenuItem::with_id(app, "export", "Export…", true, Some("CmdOrCtrl+E"))?;
+            let clear = MenuItem::with_id(app, "clear", "Clear", true, Some("CmdOrCtrl+K"))?;
             let submenu = SubmenuBuilder::new(app, "File")
-                .text("open-file", "Open File…")
-                .text("export", "Export…")
+                .items(&[
+                    &open_file,
+                    &export,
+                    &clear,
+                ])
                 .build()?;
 
             let app_menu = SubmenuBuilder::new(app, "PDF Rancher")

@@ -28,8 +28,10 @@
   const updateProject = (newProject: ProjectResponse) => {
     let newOrdering = []
     let index = 0;
+
     for (let i = 0; i < newProject.source_files.length; i++) {
       let source_file = newProject.source_files[i];
+
       for (let j = 0; j < source_file.pages.length; j++) {
         let oldOrdering = project.ordering[index];
         if (oldOrdering) {
@@ -85,6 +87,10 @@
 
   listen("rancher://did-not-export", () => {
     uiState = ListState()
+  })
+
+  listen("rancher://did-clear-project", () => {
+    loadProject()
   })
 
   listen("tauri://drag-over", () => {

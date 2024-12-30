@@ -26,6 +26,10 @@ impl Project {
         }
     }
 
+    pub fn clear(&mut self) {
+       self.source_files.clear()
+    }
+
     pub fn add_source_files(&mut self, new_files: Vec<SourceFile>) {
         self.source_files.extend(new_files);
     }
@@ -399,6 +403,20 @@ mod test {
         assert_eq!(3, source_file.pages.len());
         assert_eq!(618, source_file.pages[0].width());
         assert_eq!(800, source_file.pages[0].height());
+    }
+
+    #[test]
+    fn test_clear() {
+        let path = PathBuf::from("test/basic.pdf");
+        let source_file = SourceFile::open(&path, None).unwrap();
+        let mut project = Project::new();
+        project.add_source_files(vec![source_file.clone()]);
+
+        assert_eq!(1, project.source_files.len());
+
+        project.clear();
+
+        assert_eq!(0, project.source_files.len());
     }
 
     #[test]
