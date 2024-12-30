@@ -6,7 +6,6 @@ use project::SourceFile;
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::{mpsc, Mutex};
-use std::thread;
 use tauri::menu::*;
 use tauri::menu::{MenuBuilder, SubmenuBuilder};
 use tauri::Manager;
@@ -38,7 +37,7 @@ struct ImportProgress {
     total_pages: usize,
 }
 
-fn add_files(
+async fn add_files(
     app: AppHandle,
     paths: Vec<PathBuf>,
 ) -> Result<(), String> {
@@ -48,91 +47,91 @@ fn add_files(
 
     let _ = app.emit("rancher://will-open-files", ());
 
-    thread::spawn(move || {
-        let app_state = app.state::<Mutex<AppState>>();
+    let app_state = app.state::<Mutex<AppState>>();
 
-        let mut new_files = Vec::new();
-        let total_documents = paths.len();
+    let mut new_files = Vec::new();
+    let total_documents = paths.len();
 
-        for (index, path) in paths.into_iter().enumerate() {
-            let (sender, receiver) = mpsc::channel();
+    for (index, path) in paths.into_iter().enumerate() {
+        let (sender, receiver) = mpsc::channel();
 
-            let import_thread = thread::spawn(move || {
-                SourceFile::open(&path, Some(sender.clone()))
-            });
+        let import_task = tauri::async_runtime::spawn_blocking(move || {
+            SourceFile::open(&path, Some(sender.clone()))
+        });
 
-            let receiver_app = app.clone();
-            let update_progress_thread = thread::spawn(move || {
-                for (current_page, total_pages) in receiver {
-                    let progress = ImportProgress {
-                        current_document: index + 1,
-                        total_documents,
-                        current_page,
-                        total_pages
-                    };
-                    let _ = receiver_app.emit("rancher://did-open-file-page", progress);
-                }
-            });
+        let receiver_app = app.clone();
 
-            let new_file = import_thread.join().unwrap();
-            update_progress_thread.join().unwrap();
-
-            match new_file {
-                Ok(file) => new_files.push(file),
-                Err(e) => {
-                    let _ = app.emit("rancher://did-not-open-files", ());
-                    return notify_error(&app, &e.to_string());
-                }
+        let update_progress_task = tauri::async_runtime::spawn(async move {
+            for (current_page, total_pages) in receiver {
+                let progress = ImportProgress {
+                    current_document: index + 1,
+                    total_documents,
+                    current_page,
+                    total_pages
+                };
+                let _ = receiver_app.emit("rancher://did-open-file-page", progress);
             }
+        });
 
+        let new_file = import_task.await.map_err(|e| e.to_string())?;
+        let _ = update_progress_task.await;
+
+        match new_file {
+            Ok(file) => new_files.push(file),
+            Err(e) => {
+                let _ = app.emit("rancher://did-not-open-files", ());
+                notify_error(&app, &e.to_string());
+                return Err(e.to_string());
+            }
         }
+    }
 
-        let mut app_state = app_state
-            .lock()
-            .unwrap();
+    let mut app_state = app_state
+        .lock()
+        .unwrap();
 
-        app_state.add_source_files(new_files);
+    app_state.add_source_files(new_files);
 
-        let _ = app.emit("rancher://did-open-files", ());
-    });
+    let _ = app.emit("rancher://did-open-files", ());
 
     Ok(())
 }
 
-fn open_files(app_handle: &AppHandle) -> Result<(), String> {
+async fn open_files(app_handle: &AppHandle) -> Result<(), String> {
     use tauri_plugin_dialog::DialogExt;
 
-    let app_handle = app_handle.clone();
-    app_handle
-        .dialog()
-        .file()
-        .add_filter("PDFs", &["pdf"])
-        .pick_files(move |picked_paths| {
-            let Some(picked_paths) = picked_paths.map(|paths| {
-                paths
-                    .into_iter()
-                    .filter_map(|f| match f {
-                        FilePath::Url(_) => None,
-                        FilePath::Path(p) => Some(p),
-                    })
-                    .collect::<Vec<_>>()
-            }) else {
-                return;
-            };
+    let picked_paths =
+        app_handle
+            .dialog()
+            .file()
+            .add_filter("PDFs", &["pdf"])
+            .blocking_pick_files();
 
-            let app_state = app_handle.state::<Mutex<AppState>>();
+    let Some(picked_paths) = picked_paths.map(|paths| {
+        paths
+            .into_iter()
+            .filter_map(|f| match f {
+                FilePath::Url(_) => None,
+                FilePath::Path(p) => Some(p),
+            })
+            .collect::<Vec<_>>()
+    }) else {
+        return Ok(())
+    };
 
-            if let Err(e) = add_files(app_handle.clone(), picked_paths) {
-                notify_error(&app_handle, &e);
-            }
-        });
+    let result =  add_files(app_handle.clone(), picked_paths).await;
+    if let Err(e) = &result {
+        notify_error(&app_handle, &e);
+    }
 
     Ok(())
 }
 
 #[tauri::command]
-fn open_files_command(app_handle: AppHandle) {
-    if let Err(e) = open_files(&app_handle) {
+async fn open_files_command(app_handle: AppHandle) {
+    let result = open_files(&app_handle).await;
+
+    if let Err(e) = &result {
         notify_error(&app_handle, &e);
     };
 }
@@ -151,12 +150,10 @@ fn load_project_command(
     Ok(state.clone())
 }
 
-fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String> {
-    let _ = app_handle.emit("rancher://will-export", ());
-
+async fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String> {
     let app_handle = app_handle.clone();
 
-    thread::spawn(move || {
+    let _ = tauri::async_runtime::spawn_blocking(move || {
         let path = app_handle
             .dialog()
             .file()
@@ -169,8 +166,11 @@ fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String>
             _ => return,
         };
 
+        let _ = app_handle.emit("rancher://will-export", ());
+
         let state = app_handle.state::<Mutex<AppState>>();
         let Ok(unlocked_state) = state.lock() else {
+            let _ = app_handle.emit("rancher://did-not-export", ());
             return notify_error(&app_handle, "Couldn't lock the application state");
         };
 
@@ -179,6 +179,7 @@ fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String>
                 &app_handle,
                 format!("An error occurred while exporting the file: {}", e).as_str(),
             );
+            let _ = app_handle.emit("rancher://did-not-export", ());
             Err(())
         }) else {
             return;
@@ -189,13 +190,14 @@ fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), String>
                 &app_handle,
                 format!("An error occurred while saving the file: {}", e).as_str(),
             );
+            let _ = app_handle.emit("rancher://did-not-export", ());
             Err(())
         }) else {
             return;
         };
 
         let _ = app_handle.emit("rancher://did-export", ());
-    });
+    }).await;
 
     Ok(())
 }
@@ -206,10 +208,12 @@ fn notify_error(app_handle: &AppHandle, error: &str) {
 }
 
 #[tauri::command]
-fn export_command(app_handle: AppHandle, ordering: Vec<Selector>) {
-    if let Err(e) = export(&app_handle, ordering) {
-        notify_error(&app_handle, &e);
+async fn export_command(app_handle: AppHandle, ordering: Vec<Selector>) -> Result<(), String> {
+    let result = export(&app_handle, ordering).await;
+    if let Err(e) = &result {
+        notify_error(&app_handle, e);
     };
+    result
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -221,11 +225,16 @@ pub fn run() {
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::DragDrop(drag_drop) => {
                 if let tauri::DragDropEvent::Drop { paths, position: _ } = drag_drop {
-                    let app_state = window.state::<Mutex<AppState>>();
+                    let app_handle = window.app_handle().clone();
+                    let paths = paths.clone();
 
-                    if let Err(e) = add_files(window.app_handle().clone(), paths.clone()) {
-                        notify_error(window.app_handle(), &e);
-                    }
+                    tauri::async_runtime::block_on(async move {
+                        let result = add_files(app_handle.clone(), paths).await;
+
+                        if let Err(e) = &result {
+                            notify_error(&app_handle, e);
+                        };
+                    });
                 }
             }
             _ => {}
@@ -234,9 +243,14 @@ pub fn run() {
             let id = event.id();
 
             if id == "open-file" {
-                if let Err(e) = open_files(&app) {
-                    return notify_error(&app, &e);
-                }
+                let app_handle = app.clone();
+                let _ = tauri::async_runtime::spawn(async move {
+                    let result = open_files(&app_handle).await;
+
+                    if let Err(e) = &result {
+                        return notify_error(&app_handle, &e);
+                    }
+                });
             }
 
             if id == "export" {
