@@ -7,12 +7,19 @@
   import FocusedPage from "./lib/FocusedPage.svelte";
   import {type Ordering, type Project, type SourceFile} from "./lib/project";
   import Preview from "./lib/Preview.svelte";
-  import OpeningFiles from "./lib/OpeningFiles.svelte";
+  import {
+    DRAGGING_OVER,
+    DraggingOverState, EXPORTING, FOCUSED,
+    type Focused,
+    FocusedState, IMPORTING, ImportingState,
+    ListState,
+    type UiState
+  } from "./lib/ui_state";
+  import Importing from "./lib/Importing.svelte";
+  import Exporting from "./lib/Exporting.svelte";
 
   let project: Project = $state({ source_files: [], ordering: [] })
-  let isDraggingFilesOver: boolean = $state(false)
-  let isOpeningFiles: boolean = $state(false)
-  let focused: number | null = $state(null)
+  let uiState: UiState = $state(ListState())
 
   type ProjectResponse = {
     source_files: SourceFile[],
@@ -51,12 +58,12 @@
   })
 
   listen("rancher://will-open-files", () => {
-    isOpeningFiles = true
+    uiState = ImportingState()
   })
 
   listen("rancher://did-open-files", () => {
     loadProject().then(() => {
-      isOpeningFiles = false
+      uiState = ListState()
     })
   })
 
@@ -68,18 +75,21 @@
     invoke("export_command", { ordering })
   })
 
+  listen("rancher://will-export", () => {
+
+  })
+
   listen("tauri://drag-over", () => {
     info("drag-over")
-    isDraggingFilesOver = true
+    uiState = DraggingOverState()
   })
 
   listen("tauri://drag-leave", () => {
-    info("drag-leave")
-    isDraggingFilesOver = false
+    uiState = ListState()
   })
 
   listen("tauri://drag-drop", () => {
-    isDraggingFilesOver = false
+    uiState = ListState()
   })
 
   function handleDnd(e: any) {
@@ -117,11 +127,13 @@
   }
 
   function onPageClick(pageNum: number) {
-    focused = pageNum
+    uiState = FocusedState(pageNum)
   }
 
-  function closeFocus(newRotation: number) {
-    const oldOrdering = project.ordering[focused!];
+  function closeFocus(focusedState: Focused, newRotation: number) {
+    const focused = focusedState.ordering
+
+    const oldOrdering = project.ordering[focused];
     const newOrdering = {
       ...oldOrdering,
       rotation: newRotation,
@@ -129,12 +141,13 @@
     project = {
       ...project,
       ordering: [
-        ...project.ordering.slice(0, focused!),
+        ...project.ordering.slice(0, focused),
         newOrdering,
-        ...project.ordering.slice(focused! + 1),
+        ...project.ordering.slice(focused + 1),
       ],
     }
-    focused = null
+
+    uiState = ListState()
   }
 
   attachConsole();
@@ -143,14 +156,16 @@
 <Banners/>
 
 <project>
-  {#if isOpeningFiles}
-    <OpeningFiles/>
-  {:else if project.source_files.length === 0 || isDraggingFilesOver}
-    <dropzone class:active={isDraggingFilesOver}>
+  {#if uiState.type === IMPORTING}
+    <Importing/>
+  {:else if project.source_files.length === 0 || uiState.type === DRAGGING_OVER}
+    <dropzone class:active={uiState.type === DRAGGING_OVER}>
       <i class="fa-solid fa-file-circle-plus"></i>
     </dropzone>
-  {:else if focused !== null}
-    <FocusedPage rotation={project.ordering[focused].rotation} page={page(project.ordering[focused])} {closeFocus}/>
+  {:else if uiState.type === FOCUSED}
+    <FocusedPage rotation={project.ordering[uiState.ordering].rotation} page={page(project.ordering[uiState.ordering])} closeFocus={(e) => closeFocus(uiState, e)}/>
+  {:else if uiState.type === EXPORTING}
+    <Exporting/>
   {:else}
     <previews use:dndzone={{items: project.ordering, flipDurationMs: 100}} onconsider={handleDnd} onfinalize={handleDnd}>
       {#each project.ordering as ordering, pageNum (ordering.id)}
