@@ -9,7 +9,7 @@
   import Preview from "./lib/Preview.svelte";
   import {
     DRAGGING_OVER,
-    DraggingOverState, EXPORTING, FOCUSED,
+    DraggingOverState, EXPORTING, ExportingState, FOCUSED,
     type Focused,
     FocusedState, IMPORTING, ImportingState,
     ListState,
@@ -76,7 +76,15 @@
   })
 
   listen("rancher://will-export", () => {
+    uiState = ExportingState()
+  })
 
+  listen("rancher://did-export", () => {
+    uiState = ListState()
+  })
+
+  listen("rancher://did-not-export", () => {
+    uiState = ListState()
   })
 
   listen("tauri://drag-over", () => {
