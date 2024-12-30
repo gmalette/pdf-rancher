@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use image::EncodableLayout;
-use lopdf::{Bookmark, Document, Object, ObjectId};
+use lopdf::{Document, Object, ObjectId};
 use pdfium_render::prelude::*;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -40,7 +40,6 @@ impl Project {
 
         // Define a starting `max_id` (will be used as start index for object_ids).
         let mut max_id = 1;
-        let mut pagenum = 1;
         // Collect all Documents Objects grouped by a map
         let mut documents_pages = BTreeMap::new();
         let mut documents_objects = BTreeMap::new();
@@ -49,7 +48,6 @@ impl Project {
         let mut source_pages: Vec<Vec<(ObjectId, Object)>> = Vec::new();
 
         for mut doc in documents.into_iter() {
-            let mut first = false;
             let mut source_page = Vec::new();
 
             doc.renumber_objects_with(max_id);
@@ -60,18 +58,6 @@ impl Project {
                 doc.get_pages()
                     .into_iter()
                     .map(|(_, object_id)| {
-                        if !first {
-                            let bookmark = Bookmark::new(
-                                String::from(format!("Page_{}", pagenum)),
-                                [0.0, 0.0, 1.0],
-                                0,
-                                object_id,
-                            );
-                            document.add_bookmark(bookmark, None);
-                            first = true;
-                            pagenum += 1;
-                        }
-
                         let page = doc.get_object(object_id)?;
 
                         source_page.push((object_id, page.to_owned()));
