@@ -2,16 +2,22 @@
   import {attachConsole, info} from "@tauri-apps/plugin-log";
   import {invoke} from '@tauri-apps/api/core'
   import {listen} from "@tauri-apps/api/event";
-  import { dndzone } from 'svelte-dnd-action';
+  import {dndzone} from 'svelte-dnd-action';
   import Banners from "./lib/Banners.svelte";
   import FocusedPage from "./lib/FocusedPage.svelte";
   import {type Ordering, type Project, type SourceFile} from "./lib/project";
   import Preview from "./lib/Preview.svelte";
   import {
     DRAGGING_OVER,
-    DraggingOverState, EXPORTING, ExportingState, FOCUSED,
+    DraggingOverState,
+    EXPORTING,
+    ExportingState,
+    FOCUSED,
     type Focused,
-    FocusedState, IMPORTING, ImportingState,
+    FocusedState,
+    IMPORTING,
+    ImportingState,
+    LIST,
     ListState,
     type UiState
   } from "./lib/ui_state";
@@ -55,6 +61,14 @@
     });
   }
 
+  function beginExport() {
+    // select only enabled pages
+    const ordering = project.ordering.filter((ordering) => ordering.enabled).map((ordering) => {
+      return {...ordering, rotation: ordering.rotation.toString()}
+    })
+    invoke("export_command", { ordering })
+  }
+
   $effect(() => {
     loadProject()
   })
@@ -70,11 +84,7 @@
   })
 
   listen("rancher://export-requested", () => {
-    // select only enabled pages
-    const ordering = project.ordering.filter((ordering) => ordering.enabled).map((ordering) => {
-      return {...ordering, rotation: ordering.rotation.toString()}
-    })
-    invoke("export_command", { ordering })
+    beginExport()
   })
 
   listen("rancher://will-export", () => {
@@ -144,28 +154,60 @@
     uiState = FocusedState(pageNum)
   }
 
-  function closeFocus(focusedState: Focused, newRotation: number) {
-    const focused = focusedState.ordering
-
-    const oldOrdering = project.ordering[focused];
+  function setRotation(pageNum: number, newRotation: number) {
+    const ordering = project.ordering[pageNum]
     const newOrdering = {
-      ...oldOrdering,
+      ...ordering,
       rotation: newRotation,
     }
+
     project = {
       ...project,
       ordering: [
-        ...project.ordering.slice(0, focused),
+        ...project.ordering.slice(0, pageNum),
         newOrdering,
-        ...project.ordering.slice(focused + 1),
+        ...project.ordering.slice(pageNum + 1),
       ],
     }
+  }
+
+  function closeFocus(focusedState: Focused, newRotation: number) {
+    const focused = focusedState.ordering
+
+    setRotation(focused, newRotation)
 
     uiState = ListState()
   }
 
+  function handleKeyPress(e: KeyboardEvent) {
+    if (uiState.type !== LIST) {
+      return
+    }
+
+    // Q rotates counterclockwise, E rotates clockwise
+    if ((e.key === "q" || e.key === "e") && !(e.metaKey || e.ctrlKey || e.altKey || e.shiftKey)) {
+      const page = document.querySelector("page:hover");
+      if (!page) {
+        return;
+      }
+      const index = parseInt(page.getAttribute("index")!);
+      const ordering = project.ordering[index];
+
+      let newRotation;
+      if (e.key === "q") {
+        newRotation = (ordering.rotation + 270) % 360;
+      } else {
+        newRotation = (ordering.rotation + 90) % 360;
+      }
+
+      return setRotation(index, newRotation);
+    }
+  }
+
   attachConsole();
 </script>
+
+<svelte:window onkeypress={handleKeyPress}/>
 
 <Banners/>
 
@@ -186,7 +228,8 @@
         <page
             oncontextmenu={(e: MouseEvent) => onContextMenu(e, pageNum)}
             onclick={(_: MouseEvent) => onPageClick(pageNum)}
-            class:disabled={!ordering.enabled}>
+            class:disabled={!ordering.enabled}
+            index={pageNum}>
 
           <Preview jpg="{page(ordering).preview_jpg}" rotation={ordering.rotation} pageNum={pageNum + 1}/>
 

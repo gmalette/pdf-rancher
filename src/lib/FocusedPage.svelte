@@ -17,7 +17,15 @@
   function closeAndSave(_: MouseEvent) {
     closeFocus(newRotation);
   }
+
+  function handleKeyPress(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      closeFocus(newRotation);
+    }
+  }
 </script>
+
+<svelte:window onkeypress={handleKeyPress}/>
 
 <div>
   <tools>

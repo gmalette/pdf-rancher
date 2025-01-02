@@ -233,6 +233,11 @@ async fn clear_project(app_handle: AppHandle) {
     let _ = app_handle.emit("rancher://did-clear-project", ());
 }
 
+#[tauri::command]
+async fn clear_project_command(app_handle: AppHandle) {
+    clear_project(app_handle).await;
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -282,7 +287,7 @@ pub fn run() {
         .menu(|app| {
             let open_file = MenuItem::with_id(app, "open-file", "Open File…", true, Some("CmdOrCtrl+O"))?;
             let export = MenuItem::with_id(app, "export", "Export…", true, Some("CmdOrCtrl+E"))?;
-            let clear = MenuItem::with_id(app, "clear", "Clear", true, Some("CmdOrCtrl+K"))?;
+            let clear = MenuItem::with_id(app, "clear", "Clear", true, Some("CmdOrCtrl+Shift+K"))?;
             let submenu = SubmenuBuilder::new(app, "File")
                 .items(&[
                     &open_file,
@@ -316,7 +321,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_files_command,
             load_project_command,
-            export_command
+            export_command,
+            clear_project_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
