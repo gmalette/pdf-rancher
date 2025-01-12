@@ -1,0 +1,5 @@
+[overrides]
+"dlopen2_derive-0.4.0" = { origin = "https://github.com/OpenByteDev/dlopen2" }
+"crunchy-0.2.2" = { origin = "https://github.com/eira-fransham/crunchy" }
+"libappindicator-0.9.0" = { origin = "https://github.com/tauri-apps/libappindicator-rs" }
+"libappindicator-sys-0.9.0" = { origin = "https://github.com/tauri-apps/libappindicator-rs" }

@@ -23,7 +23,8 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "frameworks/*": "frameworks/"
+      "frameworks/*": "frameworks/",
+      "LICENSE-3rdparty.csv": "LICENSE-3rdparty.csv"
     },
     "icon": [
       "icons/32x32.png",
