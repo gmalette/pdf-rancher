@@ -68,6 +68,7 @@ crossbeam-utils,https://github.com/crossbeam-rs/crossbeam,MIT OR Apache-2.0,The 
 crunchy,https://github.com/eira-fransham/crunchy,MIT,Vurich <jackefransham@hotmail.co.uk>
 crypto-common,https://github.com/RustCrypto/traits,MIT OR Apache-2.0,RustCrypto Developers
 cssparser,https://github.com/servo/rust-cssparser,MPL-2.0,Simon Sapin <simon.sapin@exyr.org>
+csv,https://github.com/BurntSushi/rust-csv,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>
 ctor,https://github.com/mmastrac/rust-ctor,Apache-2.0 OR MIT,Matt Mastracci <matthew@mastracci.com>
 darling,https://github.com/TedDriggs/darling,MIT,Ted Driggs <ted.driggs@outlook.com>
 deranged,https://github.com/jhpratt/deranged,MIT OR Apache-2.0,Jacob Pratt <jacob@jhpratt.dev>

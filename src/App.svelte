@@ -17,12 +17,14 @@
     FocusedState,
     IMPORTING,
     ImportingState,
+    LICENSE, LicenseState,
     LIST,
     ListState,
     type UiState
   } from "./lib/ui_state";
   import Importing from "./lib/Importing.svelte";
   import Exporting from "./lib/Exporting.svelte";
+  import ViewLicenses from "./lib/ViewLicenses.svelte";
 
   let project: Project = $state({ source_files: [], ordering: [] })
   let uiState: UiState = $state(ListState())
@@ -85,6 +87,11 @@
 
   listen("rancher://export-requested", () => {
     beginExport()
+  })
+
+  listen("rancher://licenses-requested", () => {
+    info("licences-requested")
+    uiState = LicenseState()
   })
 
   listen("rancher://will-export", () => {
@@ -214,6 +221,8 @@
 <project>
   {#if uiState.type === IMPORTING}
     <Importing/>
+  {:else if uiState.type === LICENSE }
+    <ViewLicenses close={() => uiState = ListState() }/>
   {:else if project.source_files.length === 0 || uiState.type === DRAGGING_OVER}
     <dropzone class:active={uiState.type === DRAGGING_OVER}>
       <i class="fa-solid fa-file-circle-plus"></i>

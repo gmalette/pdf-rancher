@@ -1,6 +1,8 @@
 mod project;
+mod licenses;
 
 use crate::project::{Project, Selector};
+use crate::licenses::License;
 use log::error;
 use project::SourceFile;
 use serde::Serialize;
@@ -238,6 +240,11 @@ async fn clear_project_command(app_handle: AppHandle) {
     clear_project(app_handle).await;
 }
 
+#[tauri::command]
+fn licenses_command(_app_handle: AppHandle) -> Result<Vec<License>, ()> {
+    Ok(licenses::licenses())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -282,6 +289,12 @@ pub fn run() {
 
             if id == "clear" {
                 tauri::async_runtime::spawn(clear_project(app.clone()));
+                return;
+            }
+
+            if id == "licenses" {
+                let _ = app.emit("rancher://licenses-requested", ());
+                return;
             }
         })
         .menu(|app| {
@@ -298,6 +311,7 @@ pub fn run() {
 
             let app_menu = SubmenuBuilder::new(app, "PDF Rancher")
                 .about(Some(AboutMetadata::default()))
+                .item(&MenuItem::with_id(app, "licenses", "Licences", true, None::<&str>)?)
                 .separator()
                 .hide()
                 .quit()
@@ -323,6 +337,7 @@ pub fn run() {
             load_project_command,
             export_command,
             clear_project_command,
+            licenses_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

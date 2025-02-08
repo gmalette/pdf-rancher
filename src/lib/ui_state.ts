@@ -15,19 +15,22 @@ export const DRAGGING_OVER = Symbol("DRAGGING_OVER");
 export const FOCUSED = Symbol("FOCUSED");
 export const IMPORTING = Symbol("IMPORTING");
 export const EXPORTING = Symbol("EXPORTING");
+export const LICENSE = Symbol("LICENSE");
 
 export type List = { type: typeof LIST };
 export type DraggingOver = { type: typeof DRAGGING_OVER };
 export type Focused = { type: typeof FOCUSED, ordering: number };
 export type Importing = { type: typeof IMPORTING };
 export type Exporting = { type: typeof EXPORTING };
+export type License = { type: typeof LICENSE };
 
 export type UiState =
   List |
   DraggingOver |
   Focused |
   Importing |
-  Exporting;
+  Exporting |
+  License;
 
 export function ListState(): UiState {
   return { type: LIST };
@@ -47,4 +50,8 @@ export function ImportingState(): UiState {
 
 export function ExportingState(): UiState {
   return { type: EXPORTING };
+}
+
+export function LicenseState(): UiState {
+  return { type: LICENSE };
 }
