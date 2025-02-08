@@ -34,6 +34,30 @@ impl Project {
         self.source_files.extend(new_files);
     }
 
+    pub fn preview(&self, selector: Selector) -> Result<Page> {
+        let source_file = &self.source_files[selector.source_file_index];
+        let page = &source_file.pages[selector.page_index];
+
+        let pdfium = pdfium()?;
+
+        let mut file = File::open(&source_file.path)?;
+        let mut str = Vec::new();
+        file.read_to_end(&mut str)?;
+        let document = pdfium.load_pdf_from_byte_slice(str.as_bytes(), None)?;
+
+        let render_config = PdfRenderConfig::new()
+            .set_target_width(800)
+            .set_maximum_height(800);
+
+        let page = document.pages().iter().skip(selector.page_index).next().unwrap();
+        let img = page.render_with_config(&render_config)?.as_image().into_rgb8();
+        let mut bytes = Cursor::new(Vec::new());
+
+        img.write_to(&mut bytes, image::ImageFormat::Jpeg)?;
+
+        Ok(Page::new(bytes.into_inner(), img.dimensions()))
+    }
+
     pub fn export(&self, selectors: &Vec<Selector>) -> Result<Document> {
         // Load documents
         let documents = self
@@ -354,8 +378,8 @@ fn load_pdf_pages(path: &PathBuf, sender: Option<mpsc::Sender<(usize, usize)>>) 
     let document = pdfium.load_pdf_from_byte_slice(str.as_bytes(), None)?;
 
     let render_config = PdfRenderConfig::new()
-        .set_target_width(800)
-        .set_maximum_height(800);
+        .set_target_width(300)
+        .set_maximum_height(300);
 
     let mut previews = Vec::new();
 
@@ -401,8 +425,8 @@ mod test {
         let source_file = SourceFile::open(&path, None).unwrap();
         assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
-        assert_eq!(618, source_file.pages[0].width());
-        assert_eq!(800, source_file.pages[0].height());
+        assert_eq!(232, source_file.pages[0].width());
+        assert_eq!(300, source_file.pages[0].height());
     }
 
     #[test]
@@ -425,8 +449,8 @@ mod test {
         let source_file = SourceFile::open(&path, None).unwrap();
         assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
-        assert_eq!(486, source_file.pages[0].width());
-        assert_eq!(800, source_file.pages[0].height());
+        assert_eq!(182, source_file.pages[0].width());
+        assert_eq!(300, source_file.pages[0].height());
     }
 
     #[test]
@@ -437,8 +461,8 @@ mod test {
         assert_eq!(3, source_file.pages.len());
 
         // Paysage pages are rotated 90°
-        assert_eq!(800, source_file.pages[0].width());
-        assert_eq!(618, source_file.pages[0].height());
+        assert_eq!(300, source_file.pages[0].width());
+        assert_eq!(232, source_file.pages[0].height());
     }
 
     #[test]

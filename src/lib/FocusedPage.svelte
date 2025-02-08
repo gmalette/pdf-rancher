@@ -1,10 +1,20 @@
 <script lang="ts">
-  import type {Page} from "./project";
+  import type {Ordering, Page} from "./project";
   import {previewToDataUrl} from "./project.js";
   import Preview from "./Preview.svelte";
+  import {invoke} from "@tauri-apps/api/core";
+  import Progress from "./Progress.svelte";
 
-  let { rotation, page, closeFocus }: { rotation: number, page: Page, closeFocus: (a: number) => void } = $props();
+  let { ordering, closeFocus }: { ordering: Ordering, closeFocus: (a: number) => void } = $props();
+  let rotation = ordering.rotation;
   let newRotation: number = $state(rotation);
+  let page: Page | null = $state(null);
+
+  $effect(() => {
+    invoke("preview_command", { ordering: {...ordering, rotation: "0" } }).then((response: any) => {
+      page = response;
+    });
+  });
 
   function rotateCW() {
     newRotation = (newRotation + 90) % 360;
@@ -27,18 +37,22 @@
 
 <svelte:window onkeypress={handleKeyPress}/>
 
-<div>
-  <tools>
-    <button onclick={closeAndSave}>Close</button>
-    <button onclick={rotateCW}>
-      <i class="fas fa-redo"></i>
-    </button>
-    <button onclick={rotateCCW}>
-      <i class="fas fa-undo"></i>
-    </button>
-  </tools>
-  <Preview fullSize={true} jpg={page.preview_jpg} rotation={newRotation} pageNum={1} />
-</div>
+{#if page !== null}
+  <div>
+    <tools>
+      <button onclick={closeAndSave}>Close</button>
+      <button onclick={rotateCW}>
+        <i class="fas fa-redo"></i>
+      </button>
+      <button onclick={rotateCCW}>
+        <i class="fas fa-undo"></i>
+      </button>
+    </tools>
+    <Preview fullSize={true} jpg={page.preview_jpg} rotation={newRotation} pageNum={1} />
+  </div>
+{:else}
+  <Progress />
+{/if}
 
 <style>
   tools {

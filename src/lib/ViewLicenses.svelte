@@ -16,7 +16,15 @@
       licenses = response;
     })
   });
+
+  function handleKeyPress(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      close()
+    }
+  }
 </script>
+
+<svelte:window onkeypress={handleKeyPress}/>
 
 {#if licenses === null}
   <p>Loading...</p>

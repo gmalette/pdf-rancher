@@ -1,7 +1,7 @@
 mod project;
 mod licenses;
 
-use crate::project::{Project, Selector};
+use crate::project::{Page, Project, Selector};
 use crate::licenses::License;
 use log::error;
 use project::SourceFile;
@@ -245,6 +245,29 @@ fn licenses_command(_app_handle: AppHandle) -> Result<Vec<License>, ()> {
     Ok(licenses::licenses())
 }
 
+#[tauri::command]
+async fn preview_command(app_handle: AppHandle, ordering: Selector) -> Result<Page, ()> {
+    let app_handle = app_handle.clone();
+
+    let state = app_handle.state::<Mutex<AppState>>();
+    let Ok(unlocked_state) = state.lock() else {
+        notify_error(&app_handle, "Couldn't lock the application state");
+        return Err(());
+    };
+
+    let Ok(page) = unlocked_state.project.preview(ordering).or_else(|e| {
+        notify_error(
+            &app_handle,
+            format!("An error occurred while exporting the file: {}", e).as_str(),
+        );
+        Err(())
+    }) else {
+        return Err(());
+    };
+
+    Ok(page)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -338,6 +361,7 @@ pub fn run() {
             export_command,
             clear_project_command,
             licenses_command,
+            preview_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

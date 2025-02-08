@@ -25,6 +25,7 @@
   import Importing from "./lib/Importing.svelte";
   import Exporting from "./lib/Exporting.svelte";
   import ViewLicenses from "./lib/ViewLicenses.svelte";
+  import Progress from "./lib/Progress.svelte";
 
   let project: Project = $state({ source_files: [], ordering: [] })
   let uiState: UiState = $state(ListState())
@@ -158,7 +159,7 @@
   }
 
   function onPageClick(pageNum: number) {
-    uiState = FocusedState(pageNum)
+     uiState = FocusedState(pageNum)
   }
 
   function setRotation(pageNum: number, newRotation: number) {
@@ -228,7 +229,7 @@
       <i class="fa-solid fa-file-circle-plus"></i>
     </dropzone>
   {:else if uiState.type === FOCUSED}
-    <FocusedPage rotation={project.ordering[uiState.ordering].rotation} page={page(project.ordering[uiState.ordering])} closeFocus={(e) => closeFocus(uiState, e)}/>
+    <FocusedPage ordering={project.ordering[uiState.ordering]} page={page(project.ordering[uiState.ordering])} closeFocus={(e) => closeFocus(uiState, e)}/>
   {:else if uiState.type === EXPORTING}
     <Exporting/>
   {:else}
