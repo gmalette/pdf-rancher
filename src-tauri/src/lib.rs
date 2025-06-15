@@ -14,6 +14,10 @@ use tauri::Manager;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_dialog::{DialogExt, FilePath, MessageDialogButtons};
 
+/// TO RELEASE
+/// cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc && cargo tauri build --runner cargo-xwin --target aarch64-pc-windows-msvc && cargo tauri build
+/// version=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version') && mkdir $version && mv target/**/*$version* $version
+
 #[derive(Debug, Clone, Serialize)]
 struct AppState {
     project: Project,
