@@ -27,7 +27,7 @@ impl Project {
     }
 
     pub fn clear(&mut self) {
-       self.source_files.clear()
+        self.source_files.clear()
     }
 
     pub fn add_source_files(&mut self, new_files: Vec<SourceFile>) {
@@ -49,8 +49,16 @@ impl Project {
             .set_target_width(800)
             .set_maximum_height(800);
 
-        let page = document.pages().iter().skip(selector.page_index).next().unwrap();
-        let img = page.render_with_config(&render_config)?.as_image().into_rgb8();
+        let page = document
+            .pages()
+            .iter()
+            .skip(selector.page_index)
+            .next()
+            .unwrap();
+        let img = page
+            .render_with_config(&render_config)?
+            .as_image()
+            .into_rgb8();
         let mut bytes = Cursor::new(Vec::new());
 
         img.write_to(&mut bytes, image::ImageFormat::Jpeg)?;
@@ -322,9 +330,15 @@ impl SourceFile {
         let mut bytes = Vec::new();
         File::open(path)?.read_to_end(&mut bytes)?;
 
-        let offset = bytes[..1024].windows(5).position(|w| w == b"%PDF-").ok_or_else(|| {
-            anyhow!("Failed to find PDF header in file {}", path.to_string_lossy())
-        })?;
+        let offset = bytes[..1024]
+            .windows(5)
+            .position(|w| w == b"%PDF-")
+            .ok_or_else(|| {
+                anyhow!(
+                    "Failed to find PDF header in file {}",
+                    path.to_string_lossy()
+                )
+            })?;
 
         let reader = Cursor::new(&bytes[offset..]);
 
@@ -369,7 +383,10 @@ fn pdfium() -> Result<Pdfium> {
     Err(anyhow!("Failed to load Pdfium library"))
 }
 
-fn load_pdf_pages(path: &PathBuf, sender: Option<mpsc::Sender<(usize, usize)>>) -> Result<Vec<Page>> {
+fn load_pdf_pages(
+    path: &PathBuf,
+    sender: Option<mpsc::Sender<(usize, usize)>>,
+) -> Result<Vec<Page>> {
     let pdfium = pdfium()?;
 
     let mut file = File::open(path)?;

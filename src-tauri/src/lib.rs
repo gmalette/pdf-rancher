@@ -1,8 +1,8 @@
-mod project;
 mod licenses;
+mod project;
 
-use crate::project::{Page, Project, Selector};
 use crate::licenses::License;
+use crate::project::{Page, Project, Selector};
 use log::error;
 use project::SourceFile;
 use serde::Serialize;
@@ -39,10 +39,7 @@ struct ImportProgress {
     total_pages: usize,
 }
 
-async fn add_files(
-    app: AppHandle,
-    paths: Vec<PathBuf>,
-) -> Result<(), String> {
+async fn add_files(app: AppHandle, paths: Vec<PathBuf>) -> Result<(), String> {
     if paths.is_empty() {
         return Ok(());
     };
@@ -69,7 +66,7 @@ async fn add_files(
                     current_document: index + 1,
                     total_documents,
                     current_page,
-                    total_pages
+                    total_pages,
                 };
                 let _ = receiver_app.emit("rancher://did-open-file-page", progress);
             }
@@ -88,9 +85,7 @@ async fn add_files(
         }
     }
 
-    let mut app_state = app_state
-        .lock()
-        .unwrap();
+    let mut app_state = app_state.lock().unwrap();
 
     app_state.add_source_files(new_files);
 
@@ -100,12 +95,11 @@ async fn add_files(
 }
 
 async fn open_files(app_handle: &AppHandle) -> Result<(), String> {
-    let picked_paths =
-        app_handle
-            .dialog()
-            .file()
-            .add_filter("PDFs", &["pdf"])
-            .blocking_pick_files();
+    let picked_paths = app_handle
+        .dialog()
+        .file()
+        .add_filter("PDFs", &["pdf"])
+        .blocking_pick_files();
 
     let Some(picked_paths) = picked_paths.map(|paths| {
         paths
@@ -116,10 +110,10 @@ async fn open_files(app_handle: &AppHandle) -> Result<(), String> {
             })
             .collect::<Vec<_>>()
     }) else {
-        return Ok(())
+        return Ok(());
     };
 
-    let result =  add_files(app_handle.clone(), picked_paths).await;
+    let result = add_files(app_handle.clone(), picked_paths).await;
     if let Err(e) = &result {
         notify_error(&app_handle, &e);
     }
@@ -197,7 +191,8 @@ async fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), S
         };
 
         let _ = app_handle.emit("rancher://did-export", ());
-    }).await;
+    })
+    .await;
 
     Ok(())
 }
@@ -218,13 +213,18 @@ async fn export_command(app_handle: AppHandle, ordering: Vec<Selector>) -> Resul
 
 async fn clear_project(app_handle: AppHandle) {
     let cloned_handle = app_handle.clone();
-    let confirm =
-        tauri::async_runtime::spawn_blocking(move || {
-            cloned_handle.dialog().message("Are you sure you want to clear the project?").buttons(MessageDialogButtons::OkCancel).blocking_show()
-        }).await.unwrap();
+    let confirm = tauri::async_runtime::spawn_blocking(move || {
+        cloned_handle
+            .dialog()
+            .message("Are you sure you want to clear the project?")
+            .buttons(MessageDialogButtons::OkCancel)
+            .blocking_show()
+    })
+    .await
+    .unwrap();
 
     if !confirm {
-        return
+        return;
     }
 
     let app_state = app_handle.state::<Mutex<AppState>>();
@@ -321,20 +321,23 @@ pub fn run() {
             }
         })
         .menu(|app| {
-            let open_file = MenuItem::with_id(app, "open-file", "Open File…", true, Some("CmdOrCtrl+O"))?;
+            let open_file =
+                MenuItem::with_id(app, "open-file", "Open File…", true, Some("CmdOrCtrl+O"))?;
             let export = MenuItem::with_id(app, "export", "Export…", true, Some("CmdOrCtrl+E"))?;
             let clear = MenuItem::with_id(app, "clear", "Clear", true, Some("CmdOrCtrl+Shift+K"))?;
             let submenu = SubmenuBuilder::new(app, "File")
-                .items(&[
-                    &open_file,
-                    &export,
-                    &clear,
-                ])
+                .items(&[&open_file, &export, &clear])
                 .build()?;
 
             let app_menu = SubmenuBuilder::new(app, "PDF Rancher")
                 .about(Some(AboutMetadata::default()))
-                .item(&MenuItem::with_id(app, "licenses", "Licences", true, None::<&str>)?)
+                .item(&MenuItem::with_id(
+                    app,
+                    "licenses",
+                    "Licences",
+                    true,
+                    None::<&str>,
+                )?)
                 .separator()
                 .hide()
                 .quit()
