@@ -241,7 +241,7 @@
             class:disabled={!ordering.enabled}
             index={pageNum}>
 
-          <Preview jpg="{page(ordering).preview_jpg}" rotation={ordering.rotation} pageNum={pageNum + 1}/>
+          <Preview jpg={page(ordering).preview_jpg} rotation={ordering.rotation} pageNum={pageNum + 1}/>
 
           <p>{pageNum + 1}</p>
         </page>
