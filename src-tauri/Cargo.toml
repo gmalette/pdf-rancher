@@ -1,6 +1,6 @@
 [package]
 name = "pdf-rancher"
-version = "0.1.7"
+version = "0.1.8"
 description = "PDF Rancher"
 authors = ["Guillaume Malette"]
 license = ""
