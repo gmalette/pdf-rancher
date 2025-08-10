@@ -14,6 +14,35 @@ PDF Rancher is a versatile application designed for merging and splicing PDF fil
 | Modify content             | ❌          | ✅            | ✅                       | ✅                  | ❌         | ✅               |
 | Mixed Page Layout          | ✅          | ✅            | ✅                       | ✅                  | ✅         | ❌               |
 
+## Build and Publish
+
+1.  **Update PDFium Binaries (Optional)**
+
+    If you need to update the bundled PDFium binaries to the latest version, run:
+
+    ```bash
+    cargo run -p xtask -- update-pdfium
+    ```
+
+2.  **Create a Release**
+
+    To start the release process, run:
+
+    ```bash
+    cargo run -p xtask -- release
+    ```
+
+    This command will:
+    - Generate and check the third-party license file.
+    - Bump the package version.
+    - Build the application for macOS (ARM64) and Windows (x64 and ARM64).
+    - Commit, tag, and push the changes.
+    - Create a draft release on GitHub with the built artifacts.
+
+3.  **Publish the Release**
+
+    After the script finishes, go to the releases page of the GitHub repository, review the draft release, and publish it.
+
 ## Contributing
 
 We welcome contributions from the community! Here are some ways you can contribute:

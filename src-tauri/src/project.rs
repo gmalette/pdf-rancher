@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use image::EncodableLayout;
 use lopdf::{Document, Object, ObjectId};
 use pdfium_render::prelude::*;
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -36,7 +36,6 @@ impl Project {
 
     pub fn preview(&self, selector: Selector) -> Result<Page> {
         let source_file = &self.source_files[selector.source_file_index];
-        let page = &source_file.pages[selector.page_index];
 
         let pdfium = pdfium()?;
 
@@ -115,8 +114,8 @@ impl Project {
         for (object_id, object) in documents_objects.iter() {
             // We have to ignore "Page" (as are processed later), "Outlines" and "Outline" objects.
             // All other objects should be collected and inserted into the main Document.
-            match object.type_name().unwrap_or("") {
-                "Catalog" => {
+            match object.type_name().unwrap_or(b"") {
+                b"Catalog" => {
                     // Collect a first "Catalog" object and use it for the future "Pages".
                     catalog_object = Some((
                         if let Some((id, _)) = catalog_object {
@@ -127,7 +126,7 @@ impl Project {
                         object.clone(),
                     ));
                 }
-                "Pages" => {
+                b"Pages" => {
                     // Collect and update a first "Pages" object and use it for the future "Catalog"
                     // We have also to merge all dictionaries of the old and the new "Pages" object
                     if let Ok(dictionary) = object.as_dict() {
@@ -148,9 +147,9 @@ impl Project {
                         ));
                     }
                 }
-                "Page" => {}     // Ignored, processed later and separately
-                "Outlines" => {} // Ignored, not supported yet
-                "Outline" => {}  // Ignored, not supported yet
+                b"Page" => {}     // Ignored, processed later and separately
+                b"Outlines" => {} // Ignored, not supported yet
+                b"Outline" => {}  // Ignored, not supported yet
                 _ => {
                     document.objects.insert(*object_id, object.clone());
                 }
@@ -283,6 +282,7 @@ pub struct Selector {
 }
 
 impl Selector {
+    #[cfg(test)]
     fn new(source_file_index: usize, page_index: usize) -> Self {
         Self {
             source_file_index,
@@ -307,10 +307,12 @@ impl Page {
         }
     }
 
+    #[cfg(test)]
     fn width(&self) -> u32 {
         self.dimensions.0
     }
 
+    #[cfg(test)]
     fn height(&self) -> u32 {
         self.dimensions.1
     }
@@ -344,7 +346,7 @@ impl SourceFile {
 
         let document = Document::load_from(reader)?;
         // random string
-        let id = rand::thread_rng()
+        let id = rand::rng()
             .sample_iter(&Alphanumeric)
             .take(7)
             .map(char::from)
@@ -359,10 +361,6 @@ impl SourceFile {
             pages,
         })
     }
-
-    pub fn pages(&self) -> impl Iterator<Item = &Page> {
-        self.pages.iter()
-    }
 }
 
 fn pdfium() -> Result<Pdfium> {
@@ -373,11 +371,16 @@ fn pdfium() -> Result<Pdfium> {
         prefix.push("-");
         prefix.push(OS);
 
+        dbg!(&prefix);
         let name = Pdfium::pdfium_platform_library_name_at_path(&prefix);
 
-        if let Ok(lib) = Pdfium::bind_to_library(name) {
+        let val = Pdfium::bind_to_library(name);
+        if let Ok(lib) = val {
             return Ok(Pdfium::new(lib));
         }
+
+        let err = val.err().unwrap();
+        dbg!(err);
     }
 
     Err(anyhow!("Failed to load Pdfium library"))
