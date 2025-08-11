@@ -36,7 +36,8 @@
     "macOS": {
       "frameworks": [
         "frameworks/aarch64-macos/libpdfium.dylib"
-      ]
+      ],
+      "signingIdentity": "49904AECA55AEA0E53AAAA8F27017E5BA5093E79"
     },
     "windows": {
     }

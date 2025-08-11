@@ -13,6 +13,7 @@ use std::env;
 use colored::*;
 use std::io::{self, Write};
 use cargo_metadata::MetadataCommand;
+use rpassword::prompt_password;
 
 pub fn run(allow_dirty: bool) -> Result<()> {
     // Use cargo_metadata to find the workspace root
@@ -129,6 +130,36 @@ pub fn run(allow_dirty: bool) -> Result<()> {
     repo.tag(&format!("v{}", new_version), repo.head()?.peel_to_commit()?.as_object(), &signature, &msg, false)?;
     println!("{} v{}", "Committed and tagged".green(), new_version.green().bold());
 
+    // 5b. Set Apple environment variables for notarization
+    println!("{}", "Setting Apple environment variables for notarization...".cyan().bold());
+    let apple_id = env::var("APPLE_ID").unwrap_or_else(|_| {
+        println!("APPLE_ID not set.");
+        print!("Enter your Apple ID: ");
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        input.trim().to_string()
+    });
+
+    let apple_password = env::var("APPLE_PASSWORD").unwrap_or_else(|_| {
+        println!("APPLE_PASSWORD not set.");
+        prompt_password("Enter your Apple specific password: ").unwrap()
+    });
+
+    let apple_team_id = env::var("APPLE_TEAM_ID").unwrap_or_else(|_| {
+        println!("APPLE_TEAM_ID not set.");
+        print!("Enter your Apple Team ID: ");
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        input.trim().to_string()
+    });
+
+    println!("Apple environment variables set for notarization:");
+    println!("  APPLE_ID: {}", apple_id);
+    println!("  APPLE_PASSWORD: {}", "*".repeat(apple_password.len()));
+    println!("  APPLE_TEAM_ID: {}", apple_team_id);
+
     // 6. Build for all targets
     let targets = [
         ("x86_64-pc-windows-msvc", Some("cargo-xwin")),
@@ -142,6 +173,13 @@ pub fn run(allow_dirty: bool) -> Result<()> {
             cmd.arg("--runner").arg(runner);
         }
         cmd.arg("--target").arg(target);
+
+        if *target == "aarch64-apple-darwin" {
+            cmd.env("APPLE_ID", &apple_id)
+                .env("APPLE_PASSWORD", &apple_password)
+                .env("APPLE_TEAM_ID", &apple_team_id);
+        }
+
         let status = cmd.status()?;
         if !status.success() {
             return Err(anyhow!("Build failed for target {}", target));
