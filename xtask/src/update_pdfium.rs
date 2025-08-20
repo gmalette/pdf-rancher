@@ -1,30 +1,19 @@
 use anyhow::{anyhow, Result};
 use flate2::read::GzDecoder;
-use regex::Regex;
 use std::fs::{self, File};
 use std::io::copy;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tar::Archive;
 use cargo_metadata::MetadataCommand;
 
-pub fn run() -> Result<()> {
+pub fn run(version: &str) -> Result<()> {
     // Ensure we are at the workspace root
     let metadata = MetadataCommand::new().exec()?;
     let workspace_root = metadata.workspace_root.as_std_path();
     std::env::set_current_dir(workspace_root)?;
 
-    // Get the latest version tag from GitHub redirects
-    let client = reqwest::blocking::Client::new();
-    let resp = client
-        .head("https://github.com/bblanchon/pdfium-binaries/releases/latest")
-        .send()?;
-    let final_url = resp.url().to_string();
-    let tag_re = Regex::new(r"/tag/(.+)$")?;
-    let tag = tag_re
-        .captures(&final_url)
-        .ok_or_else(|| anyhow!("Could not extract tag from URL: {}", final_url))?[1]
-        .to_string();
-    println!("Found latest pdfium-binaries tag: {}", tag);
+    let tag = version;
+    println!("Using pdfium-binaries tag: {}", tag);
 
     let targets = [
         (
@@ -51,10 +40,9 @@ pub fn run() -> Result<()> {
     fs::create_dir_all(&download_dir)?;
 
     for (release_tag, target_arch, archive_path, final_name) in targets.iter() {
-        let url_encoded_tag = tag.replace('/', "%2F");
         let url = format!(
-            "https://github.com/bblanchon/pdfium-binaries/releases/download/{}/{}.tgz",
-            url_encoded_tag, release_tag
+            "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/{}/{release_tag}.tgz",
+            tag, release_tag = release_tag
         );
         println!("Downloading from {}", url);
 

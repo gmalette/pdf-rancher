@@ -13,21 +13,21 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Create a release: check git, bump version, build, and create GitHub draft release
     Release {
-        /// Allow uncommitted changes in the working directory
         #[arg(long)]
         allow_dirty: bool,
     },
-    /// Update pdfium binaries
-    UpdatePdfium,
+    UpdatePdfium {
+        #[arg(long)]
+        version: String,
+    },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Release { allow_dirty } => release::run(allow_dirty)?,
-        Commands::UpdatePdfium => update_pdfium::run()?,
+        Commands::UpdatePdfium { version } => update_pdfium::run(&version)?,
     }
     Ok(())
 }

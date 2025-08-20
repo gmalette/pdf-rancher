@@ -1,6 +1,6 @@
 [package]
 name = "pdf-rancher"
-version = "0.1.6"
+version = "0.1.5"
 description = "PDF Rancher"
 authors = ["Guillaume Malette"]
 license = ""
@@ -24,7 +24,7 @@ log = "0.4"
 tauri = { version = "2.1.0", features = [] }
 tauri-plugin-log = "2.0.0-rc"
 anyhow = "1.0.93"
-pdfium-render = "0.8.26"
+pdfium-render = "0.8.35"
 image = "0.25.5"
 thiserror = "2.0.3"
 base64 = "0.22.1"
