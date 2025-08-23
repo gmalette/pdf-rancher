@@ -23,6 +23,12 @@ pub struct BuildTarget {
 }
 
 pub const BUILD_TARGETS: &[BuildTarget] = &[
+    // BuildTarget {
+    //     platform_key: "windows-arm64",
+    //     rust_target: "aarch64-pc-windows-msvc",
+    //     updater_path: "bundle/windows-arm64/PDF Rancher.app.tar.gz",
+    //     sig_path: "bundle/windows-arm64/PDF Rancher.app.tar.gz.sig",
+    // },
     BuildTarget {
         platform_key: "darwin-aarch64",
         rust_target: "aarch64-apple-darwin",
@@ -34,12 +40,6 @@ pub const BUILD_TARGETS: &[BuildTarget] = &[
         rust_target: "x86_64-pc-windows-msvc",
         updater_path: "bundle/windows/PDF Rancher.app.tar.gz",
         sig_path: "bundle/windows/PDF Rancher.app.tar.gz.sig",
-    },
-    BuildTarget {
-        platform_key: "windows-arm64",
-        rust_target: "aarch64-pc-windows-msvc",
-        updater_path: "bundle/windows-arm64/PDF Rancher.app.tar.gz",
-        sig_path: "bundle/windows-arm64/PDF Rancher.app.tar.gz.sig",
     },
 ];
 
@@ -190,8 +190,16 @@ pub fn run(allow_dirty: bool) -> Result<()> {
 
     // 6. Build for all targets
     for target in BUILD_TARGETS {
+        let is_windows = target.rust_target.contains("windows");
+        let is_aarch64 = target.rust_target.contains("arm64");
         let mut cmd = Command::new("cargo");
         cmd.arg("tauri").arg("build");
+        if is_windows {
+            cmd.arg("--runner").arg("cargo-xwin");
+            if is_aarch64 {
+                cmd.arg("--cross-compiler").arg("clang");
+            }
+        }
         cmd.arg("--target").arg(target.rust_target);
         // Add Apple env vars for macOS notarization
         if target.rust_target == "aarch64-apple-darwin" || target.rust_target == "x86_64-apple-darwin" {
@@ -298,9 +306,8 @@ pub fn run(allow_dirty: bool) -> Result<()> {
             token
         }
     };
-    let repo = env::var("GITHUB_REPO").expect("GITHUB_REPO env var not set (e.g. username/repo)");
     let client = Client::new();
-    let release_resp = client.post(&format!("https://api.github.com/repos/{}/releases", repo))
+    let release_resp = client.post("https://api.github.com/repos/gmalette/pdf-rancher/releases")
         .bearer_auth(&github_token)
         .header("User-Agent", "xtask-release-script")
         .json(&json!({
