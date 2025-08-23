@@ -11,9 +11,37 @@ use reqwest::blocking::Client;
 use serde_json::json;
 use std::env;
 use colored::*;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use cargo_metadata::MetadataCommand;
 use rpassword::prompt_password;
+
+pub struct BuildTarget {
+    pub platform_key: &'static str,
+    pub rust_target: &'static str,
+    pub updater_path: &'static str,
+    pub sig_path: &'static str,
+}
+
+pub const BUILD_TARGETS: &[BuildTarget] = &[
+    BuildTarget {
+        platform_key: "darwin-aarch64",
+        rust_target: "aarch64-apple-darwin",
+        updater_path: "bundle/macos/PDF Rancher.app.tar.gz",
+        sig_path: "bundle/macos/PDF Rancher.app.tar.gz.sig",
+    },
+    BuildTarget {
+        platform_key: "windows-x86_64",
+        rust_target: "x86_64-pc-windows-msvc",
+        updater_path: "bundle/windows/PDF Rancher.app.tar.gz",
+        sig_path: "bundle/windows/PDF Rancher.app.tar.gz.sig",
+    },
+    BuildTarget {
+        platform_key: "windows-arm64",
+        rust_target: "aarch64-pc-windows-msvc",
+        updater_path: "bundle/windows-arm64/PDF Rancher.app.tar.gz",
+        sig_path: "bundle/windows-arm64/PDF Rancher.app.tar.gz.sig",
+    },
+];
 
 pub fn run(allow_dirty: bool) -> Result<()> {
     // Use cargo_metadata to find the workspace root
@@ -161,30 +189,21 @@ pub fn run(allow_dirty: bool) -> Result<()> {
     println!("  APPLE_TEAM_ID: {}", apple_team_id);
 
     // 6. Build for all targets
-    let targets = [
-        ("x86_64-pc-windows-msvc", Some("cargo-xwin")),
-        ("aarch64-pc-windows-msvc", Some("cargo-xwin")),
-        ("aarch64-apple-darwin", None),
-    ];
-    for (target, runner) in targets.iter() {
+    for target in BUILD_TARGETS {
         let mut cmd = Command::new("cargo");
         cmd.arg("tauri").arg("build");
-        if let Some(runner) = runner {
-            cmd.arg("--runner").arg(runner);
-        }
-        cmd.arg("--target").arg(target);
-
-        if *target == "aarch64-apple-darwin" {
+        cmd.arg("--target").arg(target.rust_target);
+        // Add Apple env vars for macOS notarization
+        if target.rust_target == "aarch64-apple-darwin" || target.rust_target == "x86_64-apple-darwin" {
             cmd.env("APPLE_ID", &apple_id)
                 .env("APPLE_PASSWORD", &apple_password)
                 .env("APPLE_TEAM_ID", &apple_team_id);
         }
-
         let status = cmd.status()?;
         if !status.success() {
-            return Err(anyhow!("Build failed for target {}", target));
+            return Err(anyhow!("Build failed for target {}", target.rust_target));
         }
-        println!("{} {}", "Build succeeded for target".green(), target.green().bold());
+        println!("{} {}", "Build succeeded for target".green(), target.rust_target.green().bold());
     }
 
     // 7. Collect artifacts
@@ -206,6 +225,40 @@ pub fn run(allow_dirty: bool) -> Result<()> {
             }
         }
     }
+
+    // After building artifacts and before uploading
+    let version = format!("v{}", new_version);
+    println!("Enter release notes (end with Ctrl+D):");
+    let mut notes = String::new();
+    io::stdin().read_to_string(&mut notes)?;
+    let pub_date = chrono::Utc::now().to_rfc3339();
+    // Collect updater files and generate update.json
+    let mut platform_json = serde_json::Map::new();
+    for target in BUILD_TARGETS {
+        let updater_file = Path::new("target/release").join(target.updater_path);
+        let sig_file = Path::new("target/release").join(target.sig_path);
+        if updater_file.exists() && sig_file.exists() {
+            let signature = fs::read_to_string(&sig_file)?.trim().to_string();
+            let url = format!(
+                "https://github.com/bblanchon/pdfium-binaries/releases/download/{}/{}",
+                version,
+                updater_file.file_name().unwrap().to_string_lossy()
+            );
+            let mut entry = serde_json::Map::new();
+            entry.insert("signature".to_string(), serde_json::Value::String(signature));
+            entry.insert("url".to_string(), serde_json::Value::String(url));
+            platform_json.insert(target.platform_key.to_string(), serde_json::Value::Object(entry));
+        }
+    }
+    let update_json = serde_json::json!({
+        "version": version,
+        "notes": notes.trim(),
+        "pub_date": pub_date,
+        "platforms": platform_json
+    });
+    let update_json_path = Path::new("target/release/update.json");
+    fs::write(update_json_path, serde_json::to_string_pretty(&update_json)?)?;
+    println!("{} {}", "Generated updater manifest at".green(), update_json_path.display());
 
     // 8. Create draft release on GitHub
     let dotenv_path = Path::new(".env");
@@ -276,6 +329,23 @@ pub fn run(allow_dirty: bool) -> Result<()> {
             } else {
                 println!("{} {}", "Uploaded artifact:".green(), fname.green().bold());
             }
+        }
+    }
+    // Upload update.json as part of the release
+    if update_json_path.exists() {
+        let fname = update_json_path.file_name().unwrap().to_string_lossy();
+        let url = format!("{}?name={}", upload_url, fname);
+        let file_bytes = fs::read(update_json_path)?;
+        let resp = client.post(&url)
+            .bearer_auth(&github_token)
+            .header("Content-Type", "application/octet-stream")
+            .header("User-Agent", "xtask-release-script")
+            .body(file_bytes)
+            .send()?;
+        if !resp.status().is_success() {
+            println!("{} {}: {}", "Failed to upload".red(), fname.red().bold(), resp.text()?);
+        } else {
+            println!("{} {}", "Uploaded artifact:".green(), fname.green().bold());
         }
     }
     println!("{}", "Draft release created and artifacts uploaded.".green().bold());

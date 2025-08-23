@@ -23,6 +23,7 @@
   "dependencies": {
     "@tauri-apps/plugin-fs": "~2",
     "@tauri-apps/plugin-log": "^2.0.0",
+    "@tauri-apps/plugin-updater": "~2",
     "@tauri-apps/plugin-window-state": "~2",
     "svelte-dnd-action": "~0.9.52"
   }

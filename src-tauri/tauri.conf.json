@@ -21,6 +21,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "resources": {
       "frameworks/*": "frameworks/",
@@ -40,6 +41,14 @@
       "signingIdentity": "49904AECA55AEA0E53AAAA8F27017E5BA5093E79"
     },
     "windows": {
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJCMzcyNTExMUVCRjM0Q0IKUldUTE5MOGVFU1UzS3pQdUZlNW11L0phN2QyeGkySVZKMFJobEJoLzhnYllJV29DNzlYdXFBR1AK",
+      "endpoints": [
+        "https://github.com/gmalette/pdf-rancher/releases/latest/download/latest.json"
+      ]
     }
   }
 }
