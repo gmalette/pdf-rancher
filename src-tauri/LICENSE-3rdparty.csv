@@ -271,10 +271,12 @@ objc2-core-image,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The 
 objc2-exception-helper,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,Mads Marquart <mads@marquart.dk>
 objc2-foundation,https://github.com/madsmtm/objc2,MIT,The objc2-foundation Authors
 objc2-io-surface,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-io-surface Authors
+objc2-javascript-core,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-javascript-core Authors
 objc2-metal,https://github.com/madsmtm/objc2,MIT,The objc2-metal Authors
 objc2-osa-kit,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-osa-kit Authors
 objc2-quartz-core,https://github.com/madsmtm/objc2,MIT,The objc2-quartz-core Authors
 objc2-quartz-core,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-quartz-core Authors
+objc2-security,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-security Authors
 objc2-ui-kit,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-ui-kit Authors
 objc2-web-kit,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-web-kit Authors
 object,https://github.com/gimli-rs/object,Apache-2.0 OR MIT,The object Authors
@@ -329,7 +331,8 @@ rangemap,https://github.com/jeffparsons/rangemap,MIT OR Apache-2.0,Jeff Parsons 
 rav1e,https://github.com/xiph/rav1e,BSD-2-Clause,Thomas Daede <tdaede@xiph.org>
 ravif,https://github.com/kornelski/cavif-rs,BSD-3-Clause,Kornel Lesiński <kornel@geekhood.net>
 raw-window-handle,https://github.com/rust-windowing/raw-window-handle,MIT OR Apache-2.0 OR Zlib,Osspial <osspial@gmail.com>
-rayon,https://github.com/rayon-rs/rayon,MIT OR Apache-2.0,"Niko Matsakis <niko@alum.mit.edu>, Josh Stone <cuviper@gmail.com>"
+rayon,https://github.com/rayon-rs/rayon,MIT OR Apache-2.0,The rayon Authors
+rayon-core,https://github.com/rayon-rs/rayon,MIT OR Apache-2.0,The rayon-core Authors
 redox_syscall,https://gitlab.redox-os.org/redox-os/syscall,MIT,Jeremy Soller <jackpot51@gmail.com>
 redox_users,https://gitlab.redox-os.org/redox-os/users,MIT,"Jose Narvaez <goyox86@gmail.com>, Wesley Hershberger <mggmugginsmc@gmail.com>"
 ref-cast,https://github.com/dtolnay/ref-cast,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
@@ -419,7 +422,11 @@ tokio,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 tokio-native-tls,https://github.com/tokio-rs/tls,MIT,Tokio Contributors <team@tokio.rs>
 tokio-rustls,https://github.com/rustls/tokio-rustls,MIT OR Apache-2.0,The tokio-rustls Authors
 toml,https://github.com/toml-rs/toml,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
+toml,https://github.com/toml-rs/toml,MIT OR Apache-2.0,The toml Authors
+toml_datetime,https://github.com/toml-rs/toml,MIT OR Apache-2.0,The toml_datetime Authors
 toml_edit,https://github.com/toml-rs/toml,MIT OR Apache-2.0,"Andronik Ordian <write@reusable.software>, Ed Page <eopage@gmail.com>"
+toml_parser,https://github.com/toml-rs/toml,MIT OR Apache-2.0,The toml_parser Authors
+toml_writer,https://github.com/toml-rs/toml,MIT OR Apache-2.0,The toml_writer Authors
 tower,https://github.com/tower-rs/tower,MIT,Tower Maintainers <team@tower-rs.com>
 tower-http,https://github.com/tower-rs/tower-http,MIT,Tower Maintainers <team@tower-rs.com>
 tracing,https://github.com/tokio-rs/tracing,MIT,"Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>"
