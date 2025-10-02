@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Result};
+use cargo_metadata::MetadataCommand;
 use flate2::read::GzDecoder;
 use std::fs::{self, File};
 use std::io::copy;
 use std::path::PathBuf;
 use tar::Archive;
-use cargo_metadata::MetadataCommand;
 
 pub fn run(version: &str) -> Result<()> {
     // Ensure we are at the workspace root
@@ -48,11 +48,7 @@ pub fn run(version: &str) -> Result<()> {
 
         let response = reqwest::blocking::get(&url)?;
         if !response.status().is_success() {
-            return Err(anyhow!(
-                "Failed to download {}: {}",
-                url,
-                response.status()
-            ));
+            return Err(anyhow!("Failed to download {}: {}", url, response.status()));
         }
 
         let tgz_filename = download_dir.join(format!("{}.tgz", release_tag));
@@ -71,7 +67,9 @@ pub fn run(version: &str) -> Result<()> {
             let path = entry.path()?.to_string_lossy().to_string();
 
             if path == *archive_path {
-                let framework_dir = workspace_root.join("src-tauri/frameworks").join(target_arch);
+                let framework_dir = workspace_root
+                    .join("src-tauri/frameworks")
+                    .join(target_arch);
                 fs::create_dir_all(&framework_dir)?;
                 let final_path = framework_dir.join(final_name);
                 entry.unpack(&final_path)?;
