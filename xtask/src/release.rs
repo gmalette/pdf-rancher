@@ -63,11 +63,17 @@ pub struct BuildTarget {
 
 impl BuildTarget {
     #[inline]
-    pub fn is_windows(&self) -> bool { self.rust_target.contains("pc-windows") }
+    pub fn is_windows(&self) -> bool {
+        self.rust_target.contains("pc-windows")
+    }
     #[inline]
-    pub fn is_macos(&self) -> bool { self.rust_target.contains("apple-darwin") }
+    pub fn is_macos(&self) -> bool {
+        self.rust_target.contains("apple-darwin")
+    }
     #[inline]
-    pub fn is_aarch64(&self) -> bool { self.rust_target.starts_with("aarch64") || self.rust_target.contains("arm64") }
+    pub fn is_aarch64(&self) -> bool {
+        self.rust_target.starts_with("aarch64") || self.rust_target.contains("arm64")
+    }
 
     fn relative_artifacts(&self, version: &str) -> Vec<PathBuf> {
         // Paths relative to target/<triple>/release
@@ -78,17 +84,32 @@ impl BuildTarget {
                 Path::new("bundle/dmg").join(format!("PDF Rancher_{}_aarch64.dmg", version)),
             ]
         } else if self.is_windows() {
-            let arch_suffix = if self.rust_target.starts_with("x86_64") { "x64" } else if self.rust_target.starts_with("aarch64") { "arm64" } else { "unknown" };
+            let arch_suffix = if self.rust_target.starts_with("x86_64") {
+                "x64"
+            } else if self.rust_target.starts_with("aarch64") {
+                "arm64"
+            } else {
+                "unknown"
+            };
             vec![
-                Path::new("bundle/nsis").join(format!("PDF Rancher_{}_{}-setup.exe", version, arch_suffix)),
-                Path::new("bundle/nsis").join(format!("PDF Rancher_{}_{}-setup.exe.sig", version, arch_suffix)),
+                Path::new("bundle/nsis")
+                    .join(format!("PDF Rancher_{}_{}-setup.exe", version, arch_suffix)),
+                Path::new("bundle/nsis").join(format!(
+                    "PDF Rancher_{}_{}-setup.exe.sig",
+                    version, arch_suffix
+                )),
             ]
-        } else { vec![] }
+        } else {
+            vec![]
+        }
     }
 
     pub fn artifacts(&self, version: &str) -> Vec<PathBuf> {
         let base = Path::new("target").join(self.rust_target).join("release");
-        self.relative_artifacts(version).into_iter().map(|p| base.join(p)).collect()
+        self.relative_artifacts(version)
+            .into_iter()
+            .map(|p| base.join(p))
+            .collect()
     }
 
     pub fn updater_paths(&self, version: &str) -> Option<(PathBuf, PathBuf)> {
@@ -98,29 +119,51 @@ impl BuildTarget {
             let mut sig: Option<PathBuf> = None;
             for rel in &rels {
                 if let Some(name) = rel.file_name().and_then(|n| n.to_str()) {
-                    if name.ends_with(".app.tar.gz") { updater = Some(rel.clone()); }
-                    else if name.ends_with(".app.tar.gz.sig") { sig = Some(rel.clone()); }
+                    if name.ends_with(".app.tar.gz") {
+                        updater = Some(rel.clone());
+                    } else if name.ends_with(".app.tar.gz.sig") {
+                        sig = Some(rel.clone());
+                    }
                 }
             }
-            match (updater, sig) { (Some(u), Some(s)) => Some((u, s)), _ => None }
+            match (updater, sig) {
+                (Some(u), Some(s)) => Some((u, s)),
+                _ => None,
+            }
         } else if self.is_windows() {
             let mut exe: Option<PathBuf> = None;
             let mut sig: Option<PathBuf> = None;
             for rel in &rels {
                 if let Some(name) = rel.file_name().and_then(|n| n.to_str()) {
-                    if name.ends_with("-setup.exe") { exe = Some(rel.clone()); }
-                    else if name.ends_with("-setup.exe.sig") { sig = Some(rel.clone()); }
+                    if name.ends_with("-setup.exe") {
+                        exe = Some(rel.clone());
+                    } else if name.ends_with("-setup.exe.sig") {
+                        sig = Some(rel.clone());
+                    }
                 }
-                if exe.is_some() && sig.is_some() { break; }
+                if exe.is_some() && sig.is_some() {
+                    break;
+                }
             }
-            match (exe, sig) { (Some(e), Some(s)) => Some((e, s)), _ => None }
-        } else { None }
+            match (exe, sig) {
+                (Some(e), Some(s)) => Some((e, s)),
+                _ => None,
+            }
+        } else {
+            None
+        }
     }
 }
 
 pub const BUILD_TARGETS: &[BuildTarget] = &[
-    BuildTarget { platform_key: "darwin-aarch64", rust_target: "aarch64-apple-darwin" },
-    BuildTarget { platform_key: "windows-x86_64", rust_target: "x86_64-pc-windows-msvc" },
+    BuildTarget {
+        platform_key: "darwin-aarch64",
+        rust_target: "aarch64-apple-darwin",
+    },
+    BuildTarget {
+        platform_key: "windows-x86_64",
+        rust_target: "x86_64-pc-windows-msvc",
+    },
 ];
 
 pub fn run(allow_dirty: bool) -> Result<()> {
@@ -180,16 +223,12 @@ pub fn run(allow_dirty: bool) -> Result<()> {
     // 2. Commit LICENSE-3rdparty.csv as a separate commit, but only if it changed
     let repo = Repository::open(".")?;
     let license_path = Path::new("src-tauri/LICENSE-3rdparty.csv");
-    let diff = repo.diff_index_to_workdir(None, None)?;
-    let mut changed = false;
-    for delta in diff.deltas() {
-        if let Some(path) = delta.new_file().path() {
-            if path == license_path {
-                changed = true;
-                break;
-            }
-        }
-    }
+    let changed = repo
+        .diff_index_to_workdir(None, None)?
+        .deltas()
+        .into_iter()
+        .any(|f| f.new_file().path() == Some(license_path));
+
     if changed {
         let mut index = repo.index()?;
         index.add_path(license_path)?;
@@ -282,34 +321,36 @@ pub fn run(allow_dirty: bool) -> Result<()> {
         new_version.cyan().bold()
     );
 
-    // 4b. Keep tauri.conf.json version in sync
+    // 4b. Keep tauri.conf.json version in sync (file required)
     let tauri_conf_path = Path::new("src-tauri/tauri.conf.json");
-    if tauri_conf_path.exists() {
-        let tauri_conf_raw = fs::read_to_string(tauri_conf_path)?;
-        match serde_json::from_str::<serde_json::Value>(&tauri_conf_raw) {
-            Ok(mut v) => {
-                let old = v.get("version").and_then(|x| x.as_str()).unwrap_or("<none>").to_string();
-                if old != new_version {
-                    v["version"] = serde_json::Value::String(new_version.clone());
-                    fs::write(tauri_conf_path, serde_json::to_string_pretty(&v)? + "\n")?;
-                    println!("{} {} -> {}", "Updated tauri.conf.json version".green(), old, new_version);
-                } else {
-                    println!("{}", "tauri.conf.json already up to date".green());
-                }
-            }
-            Err(e) => {
-                eprintln!("{} {}", "Failed to parse tauri.conf.json:".red(), e);
-                return Err(anyhow!("Could not parse tauri.conf.json for version sync"));
-            }
-        }
+    if !tauri_conf_path.exists() {
+        return Err(anyhow!("Required file src-tauri/tauri.conf.json not found"));
+    }
+    let tauri_conf_raw = fs::read_to_string(tauri_conf_path)?;
+    let mut v: serde_json::Value = serde_json::from_str(&tauri_conf_raw)
+        .map_err(|e| anyhow!("Failed to parse tauri.conf.json: {e}"))?;
+    let old = v
+        .get("version")
+        .and_then(|x| x.as_str())
+        .unwrap_or("<none>")
+        .to_string();
+    if old != new_version {
+        v["version"] = serde_json::Value::String(new_version.clone());
+        fs::write(tauri_conf_path, serde_json::to_string_pretty(&v)? + "\n")?;
+        println!(
+            "{} {} -> {}",
+            "Updated tauri.conf.json version".green(),
+            old,
+            new_version
+        );
     } else {
-        println!("{}", "Warning: src-tauri/tauri.conf.json missing; skipping version sync".yellow());
+        println!("{}", "tauri.conf.json already up to date".green());
     }
 
-    // 5. Commit and tag
     let mut index = repo.index()?;
+    index.add_path(tauri_conf_path)?;
     index.add_path(Path::new("src-tauri/Cargo.toml"))?;
-    if tauri_conf_path.exists() { index.add_path(tauri_conf_path)?; }
+    index.add_path(Path::new("Cargo.lock"))?;
     index.write()?;
     let oid = index.write_tree()?;
     let signature = repo.signature()?;
@@ -426,9 +467,15 @@ pub fn run(allow_dirty: bool) -> Result<()> {
                     updater_file.file_name().unwrap().to_string_lossy()
                 );
                 let mut entry = serde_json::Map::new();
-                entry.insert("signature".to_string(), serde_json::Value::String(signature));
+                entry.insert(
+                    "signature".to_string(),
+                    serde_json::Value::String(signature),
+                );
                 entry.insert("url".to_string(), serde_json::Value::String(url));
-                platform_json.insert(target.platform_key.to_string(), serde_json::Value::Object(entry));
+                platform_json.insert(
+                    target.platform_key.to_string(),
+                    serde_json::Value::Object(entry),
+                );
             } else {
                 println!(
                     "{} {} (missing updater or signature: {} / {})",
@@ -448,8 +495,15 @@ pub fn run(allow_dirty: bool) -> Result<()> {
     });
     let update_json_path = Path::new("target/release/update.json");
     create_dir_all(update_json_path.parent().unwrap())?;
-    fs::write(update_json_path, serde_json::to_string_pretty(&update_json)?)?;
-    println!("{} {}", "Generated updater manifest at".green(), update_json_path.display());
+    fs::write(
+        update_json_path,
+        serde_json::to_string_pretty(&update_json)?,
+    )?;
+    println!(
+        "{} {}",
+        "Generated updater manifest at".green(),
+        update_json_path.display()
+    );
 
     // 8. Create draft release on GitHub
     let github_token = get_env_var_or_prompt(
@@ -479,7 +533,11 @@ pub fn run(allow_dirty: bool) -> Result<()> {
     for entry in fs::read_dir(&release_dir)? {
         let path = entry?.path();
         if path.is_file() {
-            let fname = path.file_name().unwrap().to_string_lossy();
+            let fname = path
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .replace(" ", ".");
             let url = format!("{}?name={}", upload_url, fname);
             let file_bytes = fs::read(&path)?;
             let resp = client

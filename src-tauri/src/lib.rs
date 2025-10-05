@@ -1,9 +1,11 @@
+mod error;
 mod licenses;
 mod project;
 
+use crate::error::UpdateError;
 use crate::licenses::License;
 use crate::project::{Page, Project, Selector};
-use log::error;
+use log::{error, info};
 use project::SourceFile;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -13,6 +15,7 @@ use tauri::menu::{MenuBuilder, SubmenuBuilder};
 use tauri::Manager;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_dialog::{DialogExt, FilePath, MessageDialogButtons};
+use tauri_plugin_updater::{Error, UpdaterExt};
 
 /// TO RELEASE
 /// cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc && cargo tauri build --runner cargo-xwin --target aarch64-pc-windows-msvc && cargo tauri build
@@ -41,6 +44,23 @@ struct ImportProgress {
     total_documents: usize,
     current_page: usize,
     total_pages: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct UpdatePrompt {
+    current_version: String,
+    next_version: String,
+    body: Option<String>,
+}
+
+impl UpdatePrompt {
+    fn new(current_version: String, next_version: String, body: Option<String>) -> Self {
+        Self {
+            current_version,
+            next_version,
+            body,
+        }
+    }
 }
 
 async fn add_files(app: AppHandle, paths: Vec<PathBuf>) -> Result<(), String> {
@@ -82,6 +102,7 @@ async fn add_files(app: AppHandle, paths: Vec<PathBuf>) -> Result<(), String> {
         match new_file {
             Ok(file) => new_files.push(file),
             Err(e) => {
+                error!("Error occurred while opening file: {}", e.to_string());
                 let _ = app.emit("rancher://did-not-open-files", ());
                 notify_error(&app, &e.to_string());
                 return Err(e.to_string());
@@ -272,6 +293,54 @@ async fn preview_command(app_handle: AppHandle, ordering: Selector) -> Result<Pa
     Ok(page)
 }
 
+#[tauri::command]
+async fn perform_update_app(app: AppHandle) -> Result<(), Error> {
+    info!("Performing update...");
+    let update = if let Some(update) = app.updater()?.check().await? {
+        update
+    } else {
+        notify_error(&app, UpdateError::UpdateNotFound.to_string().as_str());
+        return Ok(());
+    };
+
+    let mut downloaded = 0;
+
+    // alternatively we could also call update.download() and update.install() separately
+    let result = update
+        .download_and_install(
+            |chunk_length, content_length| {
+                downloaded += chunk_length;
+                info!("downloaded {downloaded} from {content_length:?}");
+            },
+            || {
+                info!("download finished");
+            },
+        )
+        .await;
+
+    if let Err(e) = result {
+        let update_error: UpdateError = e.into();
+        notify_error(&app, update_error.to_string().as_str());
+        return Ok(());
+    }
+
+    info!("update installed");
+    app.restart();
+}
+
+#[tauri::command]
+async fn check_update_app(app: AppHandle) -> tauri_plugin_updater::Result<Option<UpdatePrompt>> {
+    if let Some(update) = app.updater()?.check().await? {
+        return Ok(Some(UpdatePrompt::new(
+            update.current_version,
+            update.version,
+            update.body,
+        )));
+    }
+
+    return Ok(None);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -279,6 +348,14 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ])
+                .build(),
+        )
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::DragDrop(drag_drop) => {
                 if let tauri::DragDropEvent::Drop { paths, position: _ } = drag_drop {
@@ -354,14 +431,6 @@ pub fn run() {
 
             Ok(menu)
         })
-        .plugin(
-            tauri_plugin_log::Builder::new()
-                .targets([
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
-                ])
-                .build(),
-        )
         .manage(Mutex::new(AppState::new()))
         .invoke_handler(tauri::generate_handler![
             open_files_command,
@@ -370,6 +439,8 @@ pub fn run() {
             clear_project_command,
             licenses_command,
             preview_command,
+            check_update_app,
+            perform_update_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

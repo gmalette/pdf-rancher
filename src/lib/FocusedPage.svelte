@@ -41,10 +41,10 @@
   <div>
     <tools>
       <button onclick={closeAndSave}>Close</button>
-      <button onclick={rotateCW}>
+      <button onclick={rotateCW} aria-label="Rotate clockwise">
         <i class="fas fa-redo"></i>
       </button>
-      <button onclick={rotateCCW}>
+      <button onclick={rotateCCW} aria-label="Rotate counter-clockwise">
         <i class="fas fa-undo"></i>
       </button>
     </tools>

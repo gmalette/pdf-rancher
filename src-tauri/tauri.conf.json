@@ -1,32 +1,24 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "PDF Rancher",
-  "version": "0.1.5",
-  "identifier": "ca.wako.pdf-rancher",
-  "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
-  },
   "app": {
+    "security": {
+      "csp": null
+    },
     "windows": [
       {
         "title": "PDF Rancher"
       }
-    ],
-    "security": {
-      "csp": null
-    }
+    ]
+  },
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
   },
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "targets": "all",
-    "resources": {
-      "frameworks/*": "frameworks/",
-      "LICENSE-3rdparty.csv": "LICENSE-3rdparty.csv"
-    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -40,15 +32,22 @@
       ],
       "signingIdentity": "49904AECA55AEA0E53AAAA8F27017E5BA5093E79"
     },
-    "windows": {
-    }
+    "resources": {
+      "LICENSE-3rdparty.csv": "LICENSE-3rdparty.csv",
+      "frameworks/*": "frameworks/"
+    },
+    "targets": "all",
+    "windows": {}
   },
+  "identifier": "ca.wako.pdf-rancher",
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJCMzcyNTExMUVCRjM0Q0IKUldUTE5MOGVFU1UzS3pQdUZlNW11L0phN2QyeGkySVZKMFJobEJoLzhnYllJV29DNzlYdXFBR1AK",
       "endpoints": [
-        "https://github.com/gmalette/pdf-rancher/releases/latest/download/latest.json"
-      ]
+        "https://github.com/gmalette/pdf-rancher/releases/latest/download/update.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJCMzcyNTExMUVCRjM0Q0IKUldUTE5MOGVFU1UzS3pQdUZlNW11L0phN2QyeGkySVZKMFJobEJoLzhnYllJV29DNzlYdXFBR1AK"
     }
-  }
+  },
+  "productName": "PDF Rancher",
+  "version": "0.1.5"
 }

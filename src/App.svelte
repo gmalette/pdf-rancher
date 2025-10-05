@@ -26,13 +26,19 @@
   import Exporting from "./lib/Exporting.svelte";
   import ViewLicenses from "./lib/ViewLicenses.svelte";
   import Progress from "./lib/Progress.svelte";
+  import UpdateDialog from "./lib/UpdateDialog.svelte";
 
   let project: Project = $state({ source_files: [], ordering: [] })
   let uiState: UiState = $state(ListState())
+  let updateIsAvailable = $state(false)
 
   type ProjectResponse = {
     source_files: SourceFile[],
   }
+
+  type CheckForUpdatesResponse = {
+    updateIsAvailable: boolean,
+  };
 
   const updateProject = (newProject: ProjectResponse) => {
     let newOrdering = []
@@ -74,6 +80,7 @@
 
   $effect(() => {
     loadProject()
+    checkUpdateApp()
   })
 
   listen("rancher://will-open-files", () => {
@@ -212,12 +219,28 @@
     }
   }
 
+  function performUpdateApp() {
+    invoke("perform_update_app")
+  }
+
+  function checkUpdateApp() {
+    invoke("check_update_app").then((r: any) => {
+      const response = r as CheckForUpdatesResponse | null;
+      if (response) {
+        updateIsAvailable = true
+      }
+    })
+  }
+
   attachConsole();
 </script>
 
 <svelte:window onkeypress={handleKeyPress}/>
 
 <Banners/>
+{#if updateIsAvailable}
+  <UpdateDialog onUpdate={performUpdateApp} onLater={() => updateIsAvailable = false}/>
+{/if}
 
 <project>
   {#if uiState.type === IMPORTING}
