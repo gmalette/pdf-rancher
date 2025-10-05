@@ -15,14 +15,14 @@ name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.0.2", features = [] }
+tauri-build = { version = "2.4.1", features = [] }
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.1.0", features = [] }
-tauri-plugin-log = "2.0.0-rc"
+tauri = { version = "2.8.5", features = [] }
+tauri-plugin-log = "2.6.0"
 anyhow = "1.0.93"
 pdfium-render = "0.8.35"
 image = "0.25.5"

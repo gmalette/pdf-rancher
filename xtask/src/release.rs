@@ -347,6 +347,14 @@ pub fn run(allow_dirty: bool) -> Result<()> {
         println!("{}", "tauri.conf.json already up to date".green());
     }
 
+    // Regenerate Cargo.lock so it reflects the version bump before committing
+    println!("{}", "Regenerating Cargo.lock...".cyan().bold());
+    let status = Command::new("cargo").arg("generate-lockfile").status()?;
+    if !status.success() {
+        return Err(anyhow!("Failed to regenerate Cargo.lock (cargo generate-lockfile)"));
+    }
+    println!("{}", "Cargo.lock regenerated.".green().bold());
+
     let mut index = repo.index()?;
     index.add_path(tauri_conf_path)?;
     index.add_path(Path::new("src-tauri/Cargo.toml"))?;
