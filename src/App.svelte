@@ -1,6 +1,6 @@
 <script lang="ts">
   import {attachConsole, info} from "@tauri-apps/plugin-log";
-  import {invoke} from '@tauri-apps/api/core'
+  import {Channel, invoke} from '@tauri-apps/api/core'
   import {listen} from "@tauri-apps/api/event";
   import {dndzone} from 'svelte-dnd-action';
   import Banners from "./lib/Banners.svelte";
@@ -25,20 +25,15 @@
   import Importing from "./lib/Importing.svelte";
   import Exporting from "./lib/Exporting.svelte";
   import ViewLicenses from "./lib/ViewLicenses.svelte";
-  import Progress from "./lib/Progress.svelte";
   import UpdateDialog from "./lib/UpdateDialog.svelte";
 
   let project: Project = $state({ source_files: [], ordering: [] })
   let uiState: UiState = $state(ListState())
-  let updateIsAvailable = $state(false)
+  let updateIsAvailable: boolean | null = $state(null)
 
   type ProjectResponse = {
     source_files: SourceFile[],
   }
-
-  type CheckForUpdatesResponse = {
-    updateIsAvailable: boolean,
-  };
 
   const updateProject = (newProject: ProjectResponse) => {
     let newOrdering = []
@@ -219,14 +214,9 @@
     }
   }
 
-  function performUpdateApp() {
-    invoke("perform_update_app")
-  }
-
   function checkUpdateApp() {
-    invoke("check_update_app").then((r: any) => {
-      const response = r as CheckForUpdatesResponse | null;
-      if (response) {
+    invoke("check_update_app").then((response: any) => {
+      if (response !== null) {
         updateIsAvailable = true
       }
     })
@@ -239,7 +229,7 @@
 
 <Banners/>
 {#if updateIsAvailable}
-  <UpdateDialog onUpdate={performUpdateApp} onLater={() => updateIsAvailable = false}/>
+  <UpdateDialog onLater={() => updateIsAvailable = false}/>
 {/if}
 
 <project>

@@ -10,6 +10,7 @@ use project::SourceFile;
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::{mpsc, Mutex};
+use tauri::ipc::Channel;
 use tauri::menu::*;
 use tauri::menu::{MenuBuilder, SubmenuBuilder};
 use tauri::Manager;
@@ -51,6 +52,16 @@ struct UpdatePrompt {
     current_version: String,
     next_version: String,
     body: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event", content = "data")]
+pub enum UpdateEvent {
+    Started,
+    Progress {
+        percent: Option<u64>,
+    },
+    Restarting,
 }
 
 impl UpdatePrompt {
@@ -294,7 +305,7 @@ async fn preview_command(app_handle: AppHandle, ordering: Selector) -> Result<Pa
 }
 
 #[tauri::command]
-async fn perform_update_app(app: AppHandle) -> Result<(), Error> {
+async fn perform_update_app(app: AppHandle, on_event: Channel<UpdateEvent>) -> Result<(), Error> {
     info!("Performing update...");
     let update = if let Some(update) = app.updater()?.check().await? {
         update
@@ -303,17 +314,19 @@ async fn perform_update_app(app: AppHandle) -> Result<(), Error> {
         return Ok(());
     };
 
-    let mut downloaded = 0;
+    let mut downloaded = 0u64;
+    let _ = on_event.send(UpdateEvent::Started);
 
-    // alternatively we could also call update.download() and update.install() separately
     let result = update
         .download_and_install(
             |chunk_length, content_length| {
-                downloaded += chunk_length;
-                info!("downloaded {downloaded} from {content_length:?}");
+                downloaded += chunk_length as u64;
+                let percent = content_length.map(|length| ((downloaded as f64 / length as f64) * 100f64) as u64);
+                let _ = on_event.send(UpdateEvent::Progress { percent });
             },
             || {
-                info!("download finished");
+                let _ = on_event.send(UpdateEvent::Restarting);
+                info!("download finished; restarting");
             },
         )
         .await;
