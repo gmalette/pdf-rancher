@@ -55,12 +55,15 @@ struct UpdatePrompt {
 }
 
 #[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event", content = "data")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "event",
+    content = "data"
+)]
 pub enum UpdateEvent {
     Started,
-    Progress {
-        percent: Option<u64>,
-    },
+    Progress { percent: Option<u64> },
     Restarting,
 }
 
@@ -321,7 +324,8 @@ async fn perform_update_app(app: AppHandle, on_event: Channel<UpdateEvent>) -> R
         .download_and_install(
             |chunk_length, content_length| {
                 downloaded += chunk_length as u64;
-                let percent = content_length.map(|length| ((downloaded as f64 / length as f64) * 100f64) as u64);
+                let percent = content_length
+                    .map(|length| ((downloaded as f64 / length as f64) * 100f64) as u64);
                 let _ = on_event.send(UpdateEvent::Progress { percent });
             },
             || {

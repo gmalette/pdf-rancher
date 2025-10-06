@@ -351,7 +351,9 @@ pub fn run(allow_dirty: bool) -> Result<()> {
     println!("{}", "Regenerating Cargo.lock...".cyan().bold());
     let status = Command::new("cargo").arg("generate-lockfile").status()?;
     if !status.success() {
-        return Err(anyhow!("Failed to regenerate Cargo.lock (cargo generate-lockfile)"));
+        return Err(anyhow!(
+            "Failed to regenerate Cargo.lock (cargo generate-lockfile)"
+        ));
     }
     println!("{}", "Cargo.lock regenerated.".green().bold());
 

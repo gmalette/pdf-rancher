@@ -329,20 +329,7 @@ pub struct SourceFile {
 
 impl SourceFile {
     pub fn open(path: &PathBuf, sender: Option<mpsc::Sender<(usize, usize)>>) -> Result<Self> {
-        let mut bytes = Vec::new();
-        File::open(path)?.read_to_end(&mut bytes)?;
-
-        let offset = bytes[..1024]
-            .windows(5)
-            .position(|w| w == b"%PDF-")
-            .ok_or_else(|| {
-                anyhow!(
-                    "Failed to find PDF header in file {}",
-                    path.to_string_lossy()
-                )
-            })?;
-
-        let reader = Cursor::new(&bytes[offset..]);
+        let reader = File::open(path)?;
 
         let document = Document::load_from(reader)?;
         // random string
@@ -442,6 +429,16 @@ mod test {
     #[test]
     fn test_open() {
         let path = PathBuf::from("test/basic.pdf");
+        let source_file = SourceFile::open(&path, None).unwrap();
+        assert_eq!(path.to_string_lossy(), source_file.path);
+        assert_eq!(3, source_file.pages.len());
+        assert_eq!(232, source_file.pages[0].width());
+        assert_eq!(300, source_file.pages[0].height());
+    }
+
+    #[test]
+    fn test_open_offset() {
+        let path = PathBuf::from("test/offset.pdf");
         let source_file = SourceFile::open(&path, None).unwrap();
         assert_eq!(path.to_string_lossy(), source_file.path);
         assert_eq!(3, source_file.pages.len());
