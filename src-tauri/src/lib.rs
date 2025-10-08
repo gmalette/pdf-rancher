@@ -133,11 +133,17 @@ async fn add_files(app: AppHandle, paths: Vec<PathBuf>) -> Result<(), String> {
     Ok(())
 }
 
+const IMAGE_SUPPORTED_EXTENSIONS: &[&str] = &[
+    "avif", "jpg", "jpeg", "jfif", "png", "apng", "gif", "webp", "tif", "tiff", "tga", "dds",
+    "bmp", "ico", "hdr", "exr", "pbm", "pam", "ppm", "pgm", "pnm", "ff", "qoi",
+];
+
 async fn open_files(app_handle: &AppHandle) -> Result<(), String> {
     let picked_paths = app_handle
         .dialog()
         .file()
         .add_filter("PDFs", &["pdf"])
+        .add_filter("Images", IMAGE_SUPPORTED_EXTENSIONS)
         .blocking_pick_files();
 
     let Some(picked_paths) = picked_paths.map(|paths| {
