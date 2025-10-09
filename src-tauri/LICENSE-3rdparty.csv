@@ -285,6 +285,8 @@ objc2-core-data,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The o
 objc2-core-foundation,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-core-foundation Authors
 objc2-core-graphics,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-core-graphics Authors
 objc2-core-image,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-core-image Authors
+objc2-core-text,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-core-text Authors
+objc2-core-video,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-core-video Authors
 objc2-encode,https://github.com/madsmtm/objc2,MIT,Mads Marquart <mads@marquart.dk>
 objc2-exception-helper,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,Mads Marquart <mads@marquart.dk>
 objc2-foundation,https://github.com/madsmtm/objc2,MIT,The objc2-foundation Authors
@@ -483,6 +485,7 @@ tracing-attributes,https://github.com/tokio-rs/tracing,MIT,"Tokio Contributors <
 tracing-core,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>
 tray-icon,https://github.com/tauri-apps/tray-icon,MIT OR Apache-2.0,The tray-icon Authors
 try-lock,https://github.com/seanmonstar/try-lock,MIT,Sean McArthur <sean@seanmonstar.com>
+ttf-parser,https://github.com/harfbuzz/ttf-parser,MIT OR Apache-2.0,"Caleb Maclennan <caleb@alerque.com>, Laurenz Stampfl <laurenz.stampfl@gmail.com>, Yevhenii Reizner <razrfalcon@gmail.com>, خالد حسني (Khaled Hosny) <khaled@aliftype.com>"
 typeid,https://github.com/dtolnay/typeid,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 typenum,https://github.com/paholg/typenum,MIT OR Apache-2.0,"Paho Lurie-Gregg <paho@paholg.com>, Andre Bogus <bogusandre@gmail.com>"
 uds_windows,https://github.com/haraldh/rust_uds_windows,MIT,"Azure IoT Edge Devs, Harald Hoyer <harald@redhat.com>"
