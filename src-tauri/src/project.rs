@@ -424,9 +424,25 @@ impl SourceFile {
                     (A4_LANDSCAPE.0, A4_LANDSCAPE.1, sl)
                 };
 
+                // Calculate target dimensions for the image in the PDF
+                let target_w = ((img_w as f64) * scale).round() as u32;
+                let target_h = ((img_h as f64) * scale).round() as u32;
+
+                // Resize image if it's larger than the target dimensions
+                // This significantly reduces memory usage and file size for large images
+                let rgba = if target_w < img_w || target_h < img_h {
+                    image::DynamicImage::ImageRgba8(rgba)
+                        .resize(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                        .to_rgba8()
+                } else {
+                    rgba
+                };
+
+                let (img_w, img_h) = rgba.dimensions();
+
                 // Display size and position (top-left)
-                let display_w = (img_w as f64) * scale;
-                let display_h = (img_h as f64) * scale;
+                let display_w = img_w as f64;
+                let display_h = img_h as f64;
                 let pos_x = MARGIN;
                 // PDF origin is bottom-left; to place at top-left, translate so top aligns with page_h - MARGIN
                 let pos_y = page_h - MARGIN - display_h;
@@ -676,6 +692,18 @@ mod test {
     #[test]
     fn test_open_small_image_jpg() {
         let path = PathBuf::from("test/small-image.jpg");
+        let source_file = SourceFile::open(&path, None).unwrap();
+        assert_eq!(Source::Image(path), source_file.source);
+        // A single page is produced for an image
+        assert_eq!(1, source_file.pages.len());
+        // Preview should have non-zero dimensions
+        assert!(source_file.pages[0].width() > 0);
+        assert!(source_file.pages[0].height() > 0);
+    }
+
+    #[test]
+    fn test_open_large_image_jpg() {
+        let path = PathBuf::from("test/large-image.jpg");
         let source_file = SourceFile::open(&path, None).unwrap();
         assert_eq!(Source::Image(path), source_file.source);
         // A single page is produced for an image
