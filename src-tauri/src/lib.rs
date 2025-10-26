@@ -116,7 +116,7 @@ async fn add_files(app: AppHandle, paths: Vec<PathBuf>) -> Result<(), String> {
         match new_file {
             Ok(file) => new_files.push(file),
             Err(e) => {
-                error!("Error occurred while opening file: {}", e.to_string());
+                error!("Error occurred while opening file: {}", e);
                 let _ = app.emit("rancher://did-not-open-files", ());
                 notify_error(&app, &e.to_string());
                 return Err(e.to_string());
@@ -135,7 +135,7 @@ async fn add_files(app: AppHandle, paths: Vec<PathBuf>) -> Result<(), String> {
 
 const IMAGE_SUPPORTED_EXTENSIONS: &[&str] = &[
     "avif", "jpg", "jpeg", "jfif", "png", "apng", "gif", "webp", "tif", "tiff", "tga", "dds",
-    "bmp", "ico", "hdr", "exr", "pbm", "pam", "ppm", "pgm", "pnm", "ff", "qoi",
+    "bmp", "ico", "hdr", "exr", "pbm", "pam", "ppm", "pgm", "pnm", "ff", "qoi", "heic", "heif",
 ];
 
 async fn open_files(app_handle: &AppHandle) -> Result<(), String> {
@@ -160,7 +160,7 @@ async fn open_files(app_handle: &AppHandle) -> Result<(), String> {
 
     let result = add_files(app_handle.clone(), picked_paths).await;
     if let Err(e) = &result {
-        notify_error(&app_handle, &e);
+        notify_error(app_handle, e);
     }
 
     Ok(())
@@ -171,7 +171,7 @@ async fn open_files_command(app_handle: AppHandle) {
     let result = open_files(&app_handle).await;
 
     if let Err(e) = &result {
-        notify_error(&app_handle, &e);
+        notify_error(&app_handle, e);
     };
 }
 
@@ -213,24 +213,22 @@ async fn export(app_handle: &AppHandle, ordering: Vec<Selector>) -> Result<(), S
             return notify_error(&app_handle, "Couldn't lock the application state");
         };
 
-        let Ok(mut document) = unlocked_state.project.export(&ordering).or_else(|e| {
+        let Ok(mut document) = unlocked_state.project.export(&ordering).map_err(|e| {
             notify_error(
                 &app_handle,
                 format!("An error occurred while exporting the file: {}", e).as_str(),
             );
             let _ = app_handle.emit("rancher://did-not-export", ());
-            Err(())
         }) else {
             return;
         };
 
-        let Ok(_) = document.save(path).or_else(|e| {
+        let Ok(_) = document.save(path).map_err(|e| {
             notify_error(
                 &app_handle,
                 format!("An error occurred while saving the file: {}", e).as_str(),
             );
             let _ = app_handle.emit("rancher://did-not-export", ());
-            Err(())
         }) else {
             return;
         };
@@ -300,12 +298,11 @@ async fn preview_command(app_handle: AppHandle, ordering: Selector) -> Result<Pa
         return Err(());
     };
 
-    let Ok(page) = unlocked_state.project.preview(ordering).or_else(|e| {
+    let Ok(page) = unlocked_state.project.preview(ordering).map_err(|e| {
         notify_error(
             &app_handle,
             format!("An error occurred while exporting the file: {}", e).as_str(),
         );
-        Err(())
     }) else {
         return Err(());
     };
@@ -361,7 +358,7 @@ async fn check_update_app(app: AppHandle) -> tauri_plugin_updater::Result<Option
         )));
     }
 
-    return Ok(None);
+    Ok(None)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -379,22 +376,21 @@ pub fn run() {
                 ])
                 .build(),
         )
-        .on_window_event(|window, event| match event {
-            tauri::WindowEvent::DragDrop(drag_drop) => {
-                if let tauri::DragDropEvent::Drop { paths, position: _ } = drag_drop {
-                    let app_handle = window.app_handle().clone();
-                    let paths = paths.clone();
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, position: _ }) =
+                event
+            {
+                let app_handle = window.app_handle().clone();
+                let paths = paths.clone();
 
-                    tauri::async_runtime::spawn(async move {
-                        let result = add_files(app_handle.clone(), paths).await;
+                tauri::async_runtime::spawn(async move {
+                    let result = add_files(app_handle.clone(), paths).await;
 
-                        if let Err(e) = &result {
-                            notify_error(&app_handle, e);
-                        };
-                    });
-                }
+                    if let Err(e) = &result {
+                        notify_error(&app_handle, e);
+                    };
+                });
             }
-            _ => {}
         })
         .on_menu_event(|app, event| {
             let id = event.id();
@@ -405,7 +401,7 @@ pub fn run() {
                     let result = open_files(&app_handle).await;
 
                     if let Err(e) = &result {
-                        return notify_error(&app_handle, &e);
+                        notify_error(&app_handle, e)
                     }
                 });
             }
@@ -422,7 +418,6 @@ pub fn run() {
 
             if id == "licenses" {
                 let _ = app.emit("rancher://licenses-requested", ());
-                return;
             }
         })
         .menu(|app| {

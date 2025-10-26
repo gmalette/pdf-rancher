@@ -401,9 +401,28 @@ fn copy_stage_to_frameworks(
 
     for path in copied_files {
         if let Some(file_name) = path.file_name() {
-            let dest = dest_dir.join(file_name);
+            let file_name_str = file_name.to_str().unwrap_or("");
+
+            // Determine the destination filename with version number
+            let dest_name = if file_name_str.contains("libheif") {
+                if target.is_windows() {
+                    "libheif.dll".to_string()
+                } else {
+                    "libheif.1.dylib".to_string()
+                }
+            } else if file_name_str.contains("libde265") {
+                if target.is_windows() {
+                    "libde265.dll".to_string()
+                } else {
+                    "libde265.dylib".to_string()
+                }
+            } else {
+                file_name_str.to_string()
+            };
+
+            let dest = dest_dir.join(&dest_name);
             println!("[xtask] Copy {} -> {}", path.display(), dest.display());
-            fs::copy(&path, dest)?;
+            fs::copy(&path, &dest)?;
         }
     }
 

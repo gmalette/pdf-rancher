@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use cargo_metadata::MetadataCommand;
 use colored::*;
-use dotenv;
 use git2::Repository;
 use regex::Regex;
 use reqwest::blocking::Client;
@@ -242,7 +241,7 @@ pub fn run(allow_dirty: bool) -> Result<()> {
             Some("HEAD"),
             &signature,
             &signature,
-            &msg,
+            msg,
             &tree,
             &[&parent_commit],
         )?;

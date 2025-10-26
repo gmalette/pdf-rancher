@@ -28,7 +28,9 @@
     ],
     "macOS": {
       "frameworks": [
-        "frameworks/aarch64-macos/libpdfium.dylib"
+        "frameworks/aarch64-macos/libpdfium.dylib",
+        "frameworks/aarch64-macos/libde265.dylib",
+        "frameworks/aarch64-macos/libheif.1.dylib"
       ],
       "signingIdentity": "49904AECA55AEA0E53AAAA8F27017E5BA5093E79"
     },
