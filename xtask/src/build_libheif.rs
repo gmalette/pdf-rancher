@@ -369,6 +369,16 @@ fn build_libheif(
         return Err(anyhow!("Could not find built libheif {}", extension));
     }
 
+    // For Windows builds, also copy the import library (.dll.a)
+    if target.is_windows() {
+        find_and_copy_by_pattern(&build_dir, &stage.lib, |p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.starts_with("libheif") && n.ends_with(".dll.a"))
+                .unwrap_or(false)
+        })?;
+    }
+
     Ok(())
 }
 
@@ -423,6 +433,53 @@ fn copy_stage_to_frameworks(
             let dest = dest_dir.join(&dest_name);
             println!("[xtask] Copy {} -> {}", path.display(), dest.display());
             fs::copy(&path, &dest)?;
+
+            // For Windows MinGW builds, also copy/create .lib files for MSVC compatibility
+            if target.is_windows() && matches!(target, Target::WindowsX86_64MinGW) {
+                // Convert libheif.dll -> heif.lib (remove lib prefix for Windows MSVC convention)
+                let base_name = dest_name
+                    .strip_prefix("lib")
+                    .unwrap_or(&dest_name)
+                    .replace(".dll", "");
+                let lib_name = format!("{}.lib", base_name);
+                let dest_lib = dest_dir.join(&lib_name);
+
+                // Copy the .dll.a import library as .lib
+                let source_dll_a = path.with_extension("dll.a");
+                if source_dll_a.exists() {
+                    println!("[xtask] Copy import library {} -> {}", source_dll_a.display(), dest_lib.display());
+                    fs::copy(&source_dll_a, &dest_lib)?;
+                } else {
+                    // Try to find it in the stage lib directory
+                    let stage_dll_a = stage.lib.join(file_name).with_extension("dll.a");
+                    if stage_dll_a.exists() {
+                        println!("[xtask] Copy import library {} -> {}", stage_dll_a.display(), dest_lib.display());
+                        fs::copy(&stage_dll_a, &dest_lib)?;
+                    }
+                }
+            }
+        }
+    }
+
+    // Also copy any .dll.a files as .lib for MSVC linking
+    if target.is_windows() && matches!(target, Target::WindowsX86_64MinGW) {
+        for entry in fs::read_dir(&stage.lib)? {
+            let entry = entry?;
+            let path = entry.path();
+            if let Some(ext) = path.extension() {
+                if ext == "a" && path.to_str().unwrap_or("").contains(".dll.a") {
+                    let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+                    let base_name = file_name.strip_suffix(".dll").unwrap_or(file_name);
+                    // Remove lib prefix for Windows MSVC convention
+                    let base_name = base_name.strip_prefix("lib").unwrap_or(base_name);
+                    let lib_name = format!("{}.lib", base_name);
+                    let dest = dest_dir.join(&lib_name);
+                    if !dest.exists() {
+                        println!("[xtask] Copy import library {} -> {}", path.display(), dest.display());
+                        fs::copy(&path, &dest)?;
+                    }
+                }
+            }
         }
     }
 
@@ -596,10 +653,38 @@ pub fn run(version: Option<String>, all_targets: bool) -> Result<()> {
     env::set_current_dir(&workspace_root)?;
 
     let host = detect_host_target()?;
+
     let build_root = workspace_root.join("target/libheif-build");
     ensure_dir(&build_root)?;
 
-    let libheif_tag = version.unwrap_or_else(|| "v1.17.6".to_string());
+    let libheif_tag = version.unwrap_or_else(|| {
+        // Automatically detect libheif version from libheif-sys dependency
+        // libheif-sys uses version format: x.y.z+libheif_version (e.g., 5.0.0+1.20.2)
+        println!("[xtask] Detecting required libheif version from libheif-sys...");
+
+        let metadata = MetadataCommand::new()
+            .current_dir(&workspace_root.join("src-tauri"))
+            .exec();
+
+        if let Ok(metadata) = metadata {
+            for package in &metadata.packages {
+                if package.name == "libheif-sys" {
+                    // Extract version after '+' (e.g., "5.0.0+1.20.2" -> "1.20.2")
+                    let version_str = package.version.to_string();
+                    if let Some(libheif_version) = version_str.split('+').nth(1) {
+                        let tag = format!("v{}", libheif_version);
+                        println!("[xtask] ✓ Detected libheif version: {} (from libheif-sys {})", tag, version_str);
+                        return tag;
+                    }
+                }
+            }
+        }
+
+        // Fallback if detection fails
+        eprintln!("[xtask] Warning: Could not detect libheif version from libheif-sys");
+        eprintln!("[xtask] Using fallback version v1.20.2. Specify explicitly with --version if needed.");
+        "v1.20.2".to_string()
+    });
     let libde265_tag = env::var("LIBDE265_TAG").unwrap_or_else(|_| "v1.0.15".to_string());
 
     let src_libde265 = build_root.join("libde265");

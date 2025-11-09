@@ -1,0 +1,4 @@
+# Configuration for cross-compiling to Windows MSVC from macOS using cargo-xwin
+# Environment variables for cross-compilation
+[env]
+PKG_CONFIG_ALLOW_CROSS = "1"

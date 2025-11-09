@@ -23,7 +23,7 @@ enum Commands {
         version: String,
     },
     BuildLibheif {
-        /// Optional libheif tag to build (e.g., v1.17.6). If not provided, a sensible default is used.
+        /// Optional libheif tag to build (e.g., v1.17.6). If not provided, automatically detected from libheif-sys dependency.
         #[arg(long)]
         version: Option<String>,
         /// Build for both supported targets (cross-compile when possible)

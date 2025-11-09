@@ -25,4 +25,5 @@ dist-ssr
 *.sw?
 
 .env
+.xwin-cache/
 release/

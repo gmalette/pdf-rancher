@@ -3,8 +3,12 @@ fn main() {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let frameworks_dir = std::path::Path::new(&manifest_dir).join("frameworks");
 
-    #[cfg(target_os = "macos")]
-    {
+    // Detect target OS from TARGET env var (set during cross-compilation)
+    let target = std::env::var("TARGET").unwrap_or_else(|_| std::env::consts::ARCH.to_string() + "-unknown-unknown");
+    let is_windows_target = target.contains("windows");
+    let is_macos_target = target.contains("darwin") || target.contains("macos");
+
+    if is_macos_target {
         let lib_dir = frameworks_dir.join("aarch64-macos");
 
         // Copy libraries to target directory for tests and development
@@ -32,14 +36,16 @@ fn main() {
         println!("cargo:rustc-link-search=native={}", lib_dir.display());
         println!("cargo:rustc-link-lib=dylib=heif");
         println!("cargo:rustc-link-lib=dylib=de265");
-    }
-
-    #[cfg(target_os = "windows")]
-    {
+    } else if is_windows_target {
         let lib_dir = frameworks_dir.join("x86_64-windows");
+
+        // Set up library search paths for the linker
         println!("cargo:rustc-link-search=native={}", lib_dir.display());
         println!("cargo:rustc-link-lib=dylib=heif");
         println!("cargo:rustc-link-lib=dylib=de265");
+
+        // Inform cargo about the library directory
+        println!("cargo:rerun-if-changed={}", lib_dir.display());
     }
 
     tauri_build::build()
