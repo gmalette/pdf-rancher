@@ -1,5 +1,4 @@
 Component,Origin,License,Copyright
-addr2line,https://github.com/gimli-rs/addr2line,Apache-2.0 OR MIT,The addr2line Authors
 adler2,https://github.com/oyvindln/adler2,0BSD OR MIT OR Apache-2.0,"Jonas Schievink <jonasschievink@gmail.com>, oyvindln <oyvindln@users.noreply.github.com>"
 aes,https://github.com/RustCrypto/block-ciphers,MIT OR Apache-2.0,RustCrypto Developers
 ahash,https://github.com/tkaitchuck/ahash,MIT OR Apache-2.0,Tom Kaitchuck <Tom.Kaitchuck@gmail.com>
@@ -23,7 +22,6 @@ atk-sys,https://github.com/gtk-rs/gtk3-rs,MIT,The gtk-rs Project Developers
 atomic-waker,https://github.com/smol-rs/atomic-waker,Apache-2.0 OR MIT,"Stjepan Glavina <stjepang@gmail.com>, Contributors to futures-rs"
 av1-grain,https://github.com/rust-av/av1-grain,BSD-2-Clause,The av1-grain Authors
 avif-serialize,https://github.com/kornelski/avif-serialize,BSD-3-Clause,Kornel Lesiński <kornel@geekhood.net>
-backtrace,https://github.com/rust-lang/backtrace-rs,MIT OR Apache-2.0,The Rust Project Developers
 base64,https://github.com/marshallpierce/rust-base64,MIT OR Apache-2.0,"Alice Maz <alice@alicemaz.com>, Marshall Pierce <marshall@mpierce.org>"
 base64,https://github.com/marshallpierce/rust-base64,MIT OR Apache-2.0,Marshall Pierce <marshall@mpierce.org>
 bit_field,https://github.com/phil-opp/rust-bit-field,Apache-2.0 OR MIT,Philipp Oppermann <dev@phil-opp.com>
@@ -114,6 +112,7 @@ encoding_rs,https://github.com/hsivonen/encoding_rs,(Apache-2.0 OR MIT) AND BSD-
 endi,https://github.com/zeenix/endi,MIT,Zeeshan Ali Khan <zeenix@gmail.com>
 enumflags2,https://github.com/meithecatte/enumflags2,MIT OR Apache-2.0,"maik klein <maikklein@googlemail.com>, Maja Kądziołka <maya@compilercrim.es>"
 enumflags2_derive,https://github.com/meithecatte/enumflags2,MIT OR Apache-2.0,"maik klein <maikklein@googlemail.com>, Maja Kądziołka <maya@compilercrim.es>"
+enumn,https://github.com/dtolnay/enumn,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 env_filter,https://github.com/rust-cli/env_logger,MIT OR Apache-2.0,The env_filter Authors
 equator,https://github.com/sarah-ek/equator,MIT,sarah <>
 equator-macro,https://github.com/sarah-ek/equator,MIT,sarah <>
@@ -136,6 +135,7 @@ foreign-types,https://github.com/sfackler/foreign-types,MIT OR Apache-2.0,Steven
 foreign-types-macros,https://github.com/sfackler/foreign-types,MIT OR Apache-2.0,Steven Fackler <sfackler@gmail.com>
 foreign-types-shared,https://github.com/sfackler/foreign-types,MIT OR Apache-2.0,Steven Fackler <sfackler@gmail.com>
 form_urlencoded,https://github.com/servo/rust-url,MIT OR Apache-2.0,The rust-url developers
+four-cc,https://github.com/dholroyd/four-cc,MIT OR Apache-2.0,David Holroyd <dave@badgers-in-foil.co.uk>
 funty,https://github.com/myrrlyn/funty,MIT,myrrlyn <self@myrrlyn.dev>
 futf,https://github.com/servo/futf,MIT  OR  Apache-2.0,Keegan McAllister <kmcallister@mozilla.com>
 futures-channel,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,The futures-channel Authors
@@ -158,7 +158,6 @@ gdkx11-sys,https://github.com/gtk-rs/gtk3-rs,MIT,The gtk-rs Project Developers
 generic-array,https://github.com/fizyk20/generic-array,MIT,"Bartłomiej Kamiński <fizyk20@gmail.com>, Aaron Trent <novacrazy@gmail.com>"
 getrandom,https://github.com/rust-random/getrandom,MIT OR Apache-2.0,The Rand Project Developers
 gif,https://github.com/image-rs/image-gif,MIT OR Apache-2.0,The image-rs Developers
-gimli,https://github.com/gimli-rs/gimli,MIT OR Apache-2.0,The gimli Authors
 gio,https://github.com/gtk-rs/gtk-rs-core,MIT,The gtk-rs Project Developers
 gio-sys,https://github.com/gtk-rs/gtk-rs-core,MIT,The gtk-rs Project Developers
 glib,https://github.com/gtk-rs/gtk-rs-core,MIT,The gtk-rs Project Developers
@@ -205,7 +204,6 @@ indexmap,https://github.com/indexmap-rs/indexmap,Apache-2.0 OR MIT,The indexmap 
 infer,https://github.com/bojand/infer,MIT,Bojan <dbojan@gmail.com>
 inout,https://github.com/RustCrypto/utils,MIT OR Apache-2.0,RustCrypto Developers
 interpolate_name,https://github.com/lu-zero/interpolate_name,MIT,Luca Barbato <lu_zero@gentoo.org>
-io-uring,https://github.com/tokio-rs/io-uring,MIT OR Apache-2.0,quininer <quininer@live.com>
 ipnet,https://github.com/krisprice/ipnet,MIT OR Apache-2.0,Kris Price <kris@krisprice.nz>
 iri-string,https://github.com/lo48576/iri-string,MIT OR Apache-2.0,YOSHIOKA Takuma <nop_thread@nops.red>
 itertools,https://github.com/rust-itertools/itertools,MIT OR Apache-2.0,bluss
@@ -229,6 +227,8 @@ libappindicator,https://github.com/tauri-apps/libappindicator-rs,Apache-2.0 OR M
 libappindicator-sys,https://github.com/tauri-apps/libappindicator-rs,Apache-2.0 OR MIT,The libappindicator-sys Authors
 libc,https://github.com/rust-lang/libc,MIT OR Apache-2.0,The Rust Project Developers
 libfuzzer-sys,https://github.com/rust-fuzz/libfuzzer,(MIT OR Apache-2.0) AND NCSA,The rust-fuzz Project Developers
+libheif-rs,https://github.com/cykooz/libheif-rs,MIT,Kirill Kuzminykh <cykooz@gmail.com>
+libheif-sys,https://github.com/cykooz/libheif-sys,MIT,Kirill Kuzminykh <cykooz@gmail.com>
 libloading,https://github.com/nagisa/rust_libloading,ISC,Simonas Kazlauskas <libloading@kazlauskas.me>
 libredox,https://gitlab.redox-os.org/redox-os/libredox,MIT,4lDO2 <4lDO2@protonmail.com>
 linux-raw-sys,https://github.com/sunfishcode/linux-raw-sys,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Dan Gohman <dev@sunfishcode.online>
@@ -299,7 +299,6 @@ objc2-quartz-core,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The
 objc2-security,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-security Authors
 objc2-ui-kit,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-ui-kit Authors
 objc2-web-kit,https://github.com/madsmtm/objc2,Zlib OR Apache-2.0 OR MIT,The objc2-web-kit Authors
-object,https://github.com/gimli-rs/object,Apache-2.0 OR MIT,The object Authors
 once_cell,https://github.com/matklad/once_cell,MIT OR Apache-2.0,Aleksey Kladov <aleksey.kladov@gmail.com>
 openssl,https://github.com/sfackler/rust-openssl,Apache-2.0,Steven Fackler <sfackler@gmail.com>
 openssl-macros,https://github.com/sfackler/rust-openssl,MIT OR Apache-2.0,The openssl-macros Authors
@@ -379,7 +378,6 @@ ring,https://github.com/briansmith/ring,Apache-2.0 AND ISC,The ring Authors
 rkyv,https://github.com/rkyv/rkyv,MIT,David Koloski <djkoloski@gmail.com>
 rkyv_derive,https://github.com/rkyv/rkyv,MIT,David Koloski <djkoloski@gmail.com>
 rust_decimal,https://github.com/paupino/rust-decimal,MIT,Paul Mason <paul@form1.co.nz>
-rustc-demangle,https://github.com/rust-lang/rustc-demangle,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
 rustc-hash,https://github.com/rust-lang/rustc-hash,Apache-2.0 OR MIT,The Rust Project Developers
 rustix,https://github.com/bytecodealliance/rustix,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,"Dan Gohman <dev@sunfishcode.online>, Jakub Konka <kubkon@jakubkonka.com>"
 rustls,https://github.com/rustls/rustls,Apache-2.0 OR ISC OR MIT,The rustls Authors
@@ -514,7 +512,6 @@ version-compare,https://gitlab.com/timvisee/version-compare,MIT,Tim Visee <3a4fb
 walkdir,https://github.com/BurntSushi/walkdir,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>
 want,https://github.com/seanmonstar/want,MIT,Sean McArthur <sean@seanmonstar.com>
 wasi,https://github.com/bytecodealliance/wasi,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,The Cranelift Project Developers
-wasi,https://github.com/bytecodealliance/wasi-rs,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,The wasi Authors
 wasip2,https://github.com/bytecodealliance/wasi-rs,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,The wasip2 Authors
 wasm-bindgen,https://github.com/wasm-bindgen/wasm-bindgen,MIT OR Apache-2.0,The wasm-bindgen Developers
 wasm-bindgen-backend,https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/backend,MIT OR Apache-2.0,The wasm-bindgen Developers
