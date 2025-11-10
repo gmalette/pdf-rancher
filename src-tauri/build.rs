@@ -4,7 +4,8 @@ fn main() {
     let frameworks_dir = std::path::Path::new(&manifest_dir).join("frameworks");
 
     // Detect target OS from TARGET env var (set during cross-compilation)
-    let target = std::env::var("TARGET").unwrap_or_else(|_| std::env::consts::ARCH.to_string() + "-unknown-unknown");
+    let target = std::env::var("TARGET")
+        .unwrap_or_else(|_| std::env::consts::ARCH.to_string() + "-unknown-unknown");
     let is_windows_target = target.contains("windows");
     let is_macos_target = target.contains("darwin") || target.contains("macos");
 

@@ -390,7 +390,11 @@ impl SourceFile {
                     pages,
                 })
             }
-            Some(ext) if image::ImageFormat::from_extension(ext).is_some() || ext == "heic" || ext == "heif" => {
+            Some(ext)
+                if image::ImageFormat::from_extension(ext).is_some()
+                    || ext == "heic"
+                    || ext == "heif" =>
+            {
                 let dyn_img = image::open(path)?;
                 let rgba = dyn_img.to_rgba8();
                 let (img_w, img_h) = rgba.dimensions();
@@ -506,22 +510,28 @@ fn build_single_page_pdf_from_rgba(img_w: u32, img_h: u32, rgba: &[u8]) -> Docum
     };
 
     // Calculate target dimensions for the image in the PDF
-                let target_w = ((img_w as f64) * scale).round() as u32;
-                let target_h = ((img_h as f64) * scale).round() as u32;
+    let target_w = ((img_w as f64) * scale).round() as u32;
+    let target_h = ((img_h as f64) * scale).round() as u32;
 
-                // Resize image if it's larger than the target dimensions
-                // This significantly reduces memory usage and file size for large images
-                let rgba = if target_w < img_w || target_h < img_h {
-                    image::DynamicImage::ImageRgba8(rgba)
-                        .resize(target_w, target_h, image::imageops::FilterType::Lanczos3)
-                        .to_rgba8()
-                } else {
-                    rgba
-                };
+    // Resize image if it's larger than the target dimensions
+    // This significantly reduces memory usage and file size for large images
+    let rgba = if target_w < img_w || target_h < img_h {
+        // Convert raw bytes to ImageBuffer, then resize
+        let img_buffer =
+            image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(img_w, img_h, rgba.to_vec())
+                .expect("Failed to create image buffer from raw RGBA data");
+        image::DynamicImage::ImageRgba8(img_buffer)
+            .resize(target_w, target_h, image::imageops::FilterType::Lanczos3)
+            .to_rgba8()
+    } else {
+        // Convert raw bytes to ImageBuffer
+        image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(img_w, img_h, rgba.to_vec())
+            .expect("Failed to create image buffer from raw RGBA data")
+    };
 
-                let (img_w, img_h) = rgba.dimensions();
+    let (img_w, img_h) = rgba.dimensions();
 
-                // Display size and position (top-left)
+    // Display size and position (top-left)
     let display_w = img_w as f64;
     let display_h = img_h as f64;
     let pos_x = MARGIN;
