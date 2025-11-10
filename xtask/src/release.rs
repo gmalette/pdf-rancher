@@ -297,6 +297,19 @@ pub fn run(allow_dirty: bool) -> Result<()> {
         );
     }
 
+    // --- Run tests before proceeding with release ---
+    println!("{}", "Running tests...".cyan().bold());
+    let test_status = Command::new("cargo")
+        .arg("test")
+        .current_dir("src-tauri")
+        .status()?;
+    if !test_status.success() {
+        return Err(anyhow!(
+            "Tests failed. Please fix the tests before running the release script."
+        ));
+    }
+    println!("{}", "All tests passed.".green().bold());
+
     // --- Save previous version for rollback ---
     let cargo_toml_path = Path::new("src-tauri/Cargo.toml");
     let content = fs::read_to_string(cargo_toml_path)?;
